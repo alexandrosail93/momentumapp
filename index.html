@@ -178,6 +178,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .add-wl-btn:hover{background:rgba(58,143,255,.06)}
 .add-wl-btn.added{color:var(--call);border-top-color:rgba(0,229,160,.2)}
 .disc{font-size:8px;color:var(--mut);text-align:center;line-height:1.7;margin-top:8px}
+
+/* QUICK ADD BUTTONS */
+.qsec{margin-bottom:10px}
+.qsec-lbl{font-size:8px;letter-spacing:.15em;color:var(--mut);text-transform:uppercase;margin-bottom:6px}
+.qbtn-row{display:flex;gap:5px;flex-wrap:wrap}
+.qbtn{font-size:10px;font-family:var(--mono);color:var(--txt);background:var(--s1);border:1px solid var(--bd);border-radius:4px;padding:5px 10px;cursor:pointer;transition:all .15s;white-space:nowrap;position:relative}
+.qbtn:active{transform:scale(.96)}
+.qbtn.in-wl{color:var(--call);border-color:rgba(0,229,160,.35);background:rgba(0,229,160,.06)}
+.qbtn.in-wl::after{content:'✓';font-size:8px;margin-left:4px;opacity:.7}
 </style>
 </head>
 <body>
@@ -197,6 +206,47 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="add-row">
       <input type="text" id="addT" placeholder="Aggiungi ticker (es. AAPL, ENI.MI)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" maxlength="12">
       <button class="btn-add" onclick="addTicker()">+ ADD</button>
+    </div>
+
+    <!-- QUICK ADD BUTTONS -->
+    <div class="qsec">
+      <div class="qsec-lbl">🇺🇸 US Tech</div>
+      <div class="qbtn-row">
+        <button class="qbtn" onclick="quickAdd('NVDA','NVIDIA')">NVDA</button>
+        <button class="qbtn" onclick="quickAdd('GOOGL','Alphabet')">GOOGL</button>
+        <button class="qbtn" onclick="quickAdd('AAPL','Apple')">AAPL</button>
+        <button class="qbtn" onclick="quickAdd('MSFT','Microsoft')">MSFT</button>
+        <button class="qbtn" onclick="quickAdd('ORCL','Oracle')">ORCL</button>
+        <button class="qbtn" onclick="quickAdd('ADBE','Adobe')">ADBE</button>
+        <button class="qbtn" onclick="quickAdd('CRM','Salesforce')">CRM</button>
+        <button class="qbtn" onclick="quickAdd('NFLX','Netflix')">NFLX</button>
+        <button class="qbtn" onclick="quickAdd('UBER','Uber')">UBER</button>
+      </div>
+    </div>
+    <div class="qsec">
+      <div class="qsec-lbl">🇺🇸 US Other</div>
+      <div class="qbtn-row">
+        <button class="qbtn" onclick="quickAdd('TSLA','Tesla')">TSLA</button>
+        <button class="qbtn" onclick="quickAdd('UNH','UnitedHealth')">UNH</button>
+        <button class="qbtn" onclick="quickAdd('AAL','American Airlines')">AAL</button>
+        <button class="qbtn" onclick="quickAdd('KO','Coca-Cola')">KO</button>
+        <button class="qbtn" onclick="quickAdd('BRK-B','Berkshire')">BRK-B</button>
+        <button class="qbtn" onclick="quickAdd('PG','Procter & Gamble')">PG</button>
+        <button class="qbtn" onclick="quickAdd('NKE','Nike')">NKE</button>
+        <button class="qbtn" onclick="quickAdd('RACE','Ferrari')">RACE</button>
+      </div>
+    </div>
+    <div class="qsec">
+      <div class="qsec-lbl">🇮🇹 Italia</div>
+      <div class="qbtn-row">
+        <button class="qbtn" onclick="quickAdd('BRE.MI','Brembo')">Brembo</button>
+        <button class="qbtn" onclick="quickAdd('DNR.MI','De Nora')">De Nora</button>
+        <button class="qbtn" onclick="quickAdd('MONC.MI','Moncler')">Moncler</button>
+        <button class="qbtn" onclick="quickAdd('REC.MI','Recordati')">Recordati</button>
+        <button class="qbtn" onclick="quickAdd('REY.MI','Reply')">Reply</button>
+        <button class="qbtn" onclick="quickAdd('AMP.MI','Amplifon')">Amplifon</button>
+        <button class="qbtn" onclick="quickAdd('DIA.MI','DiaSorin')">DiaSorin</button>
+      </div>
     </div>
 
     <div class="top-bar">
@@ -287,11 +337,43 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
 <script>
 const WL_KEY='miq_wl_v41';
+const CACHE_KEY='miq_cache_v41';
+const CACHE_TTL=4*60*60*1000; // 4 hours
 let watchlist=JSON.parse(localStorage.getItem(WL_KEY)||'[]');
 let scores={};
 let sortMode='score';
 let lastRes=null;
+
 function saveWL(){localStorage.setItem(WL_KEY,JSON.stringify(watchlist));}
+
+function saveCache(){
+  const cache={ts:Date.now(),scores:{}};
+  for(const [t,s] of Object.entries(scores)){
+    if(!s.error) cache.scores[t]=s;
+  }
+  try{localStorage.setItem(CACHE_KEY,JSON.stringify(cache));}catch(e){}
+}
+
+function loadCache(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw) return false;
+    const cache=JSON.parse(raw);
+    if(Date.now()-cache.ts > CACHE_TTL) return false;
+    scores={...cache.scores};
+    return true;
+  }catch(e){return false;}
+}
+
+function cacheAge(){
+  try{
+    const raw=localStorage.getItem(CACHE_KEY);
+    if(!raw) return null;
+    const cache=JSON.parse(raw);
+    const mins=Math.round((Date.now()-cache.ts)/60000);
+    return mins<60?`${mins}m fa`:`${Math.floor(mins/60)}h fa`;
+  }catch(e){return null;}
+}
 function $id(id){return document.getElementById(id);}
 function fmt(n,d=2){return(n>=0?'+':'')+n.toFixed(d);}
 function bc(p,m){const r=p/m;return r>=.75?'var(--call)':r>=.4?'var(--neu)':'var(--put)';}
@@ -315,9 +397,9 @@ function parseYahooJson(j, t) {
 async function fetchY(t) {
   // Multiple Yahoo endpoints × multiple proxies
   const yUrls = [
-    `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2y`,
-    `https://query2.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2y`,
-    `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=2y&includeAdjustedClose=true`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1y`,
+    `https://query2.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1y`,
+    `https://query1.finance.yahoo.com/v8/finance/chart/${t}?interval=1d&range=1y&includeAdjustedClose=true`,
   ];
   const proxyFns = [
     u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
@@ -422,6 +504,25 @@ function addTicker(){
   renderTable();
   fetchOne(t);
 }
+function quickAdd(ticker, name) {
+  if (!watchlist.includes(ticker)) {
+    watchlist.push(ticker);
+    saveWL();
+    renderTable();
+    fetchOne(ticker);
+  }
+  updateQBtns();
+}
+function updateQBtns() {
+  document.querySelectorAll('.qbtn').forEach(btn => {
+    // Extract ticker from onclick attribute
+    const match = btn.getAttribute('onclick').match(/quickAdd\('([^']+)'/);
+    if (match) {
+      const t = match[1];
+      btn.classList.toggle('in-wl', watchlist.includes(t));
+    }
+  });
+}
 function removeTicker(t){
   watchlist=watchlist.filter(x=>x!==t);delete scores[t];saveWL();renderTable();
 }
@@ -460,6 +561,7 @@ function sortedWL(){
 function renderTable(){
   const list=sortedWL();
   $id('wlC').textContent=watchlist.length;
+  updateQBtns();
   const el=$id('wlTable');
   if(watchlist.length===0){
     el.innerHTML='<div class="empty"><b>Watchlist vuota</b>Aggiungi ticker con il campo in alto<br>o usa il tab Analisi → Aggiungi alla Watchlist</div>';
@@ -538,6 +640,7 @@ function updateProg(done,total){
       const now=new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
       $id('updTime').textContent=now;
       $id('lastUpd').style.display='block';
+      saveCache();
     },600);
   }
 }
@@ -549,18 +652,16 @@ async function refreshAll(){
   $id('btnRef').classList.add('spinning');
   $id('prog').classList.add('on');
   $id('pFill').style.width='0%';
-  $id('pLbl').textContent=`Avvio aggiornamento ${watchlist.length} titoli…`;
+  $id('pLbl').textContent=`Caricamento ${watchlist.length} titoli in parallelo…`;
   renderTable();
   let done=0;
-  const batch=3;
-  for(let i=0;i<watchlist.length;i+=batch){
-    const chunk=watchlist.slice(i,i+batch);
-    await Promise.all(chunk.map(async t=>{
-      await fetchOne(t);
-      done++;
-      updateProg(done,watchlist.length);
-    }));
-  }
+  // Fetch ALL in parallel
+  await Promise.all(watchlist.map(async t=>{
+    await fetchOne(t);
+    done++;
+    updateProg(done,watchlist.length);
+  }));
+  saveCache();
 }
 
 // DETAIL
@@ -650,7 +751,30 @@ $id('addT').addEventListener('keydown',e=>{if(e.key==='Enter')addTicker();});
 $id('sT').addEventListener('keydown',e=>{if(e.key==='Enter')analyze();});
 
 renderTable();
-if(watchlist.length>0)setTimeout(refreshAll,300);
+updateQBtns();
+if(watchlist.length>0){
+  const cached=loadCache();
+  if(cached){
+    // Instant render from cache
+    renderTable();
+    const age=cacheAge();
+    if(age){$id('updTime').textContent=`Cache ${age}`;$id('lastUpd').style.display='block';}
+    // Refresh stale tickers (those not in cache or errored)
+    const stale=watchlist.filter(t=>!scores[t]||scores[t].error);
+    if(stale.length>0){
+      setTimeout(async()=>{
+        let done=0;
+        $id('btnRef').disabled=true;$id('btnRef').classList.add('spinning');
+        $id('prog').classList.add('on');$id('pFill').style.width='0%';
+        $id('pLbl').textContent=`Aggiornamento ${stale.length} titoli mancanti…`;
+        await Promise.all(stale.map(async t=>{await fetchOne(t);done++;updateProg(done,stale.length);}));
+        saveCache();
+      },300);
+    }
+  } else {
+    setTimeout(refreshAll,300);
+  }
+}
 </script>
 </body>
 </html>
