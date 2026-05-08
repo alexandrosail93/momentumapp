@@ -73,7 +73,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .tbl-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--row-c,transparent);transition:background .4s}
 
 /* Desktop columns: ticker | name | score | signal | rsi | roc1m | ma200 | macd | del */
-.app{--cols: 60px 1fr 48px 100px 38px 52px 52px 36px 28px}
+.app{--cols: 60px 1fr 48px 100px 38px 52px 52px 36px 46px}
 
 .th,.td{padding:8px 6px;font-size:9px;letter-spacing:.06em;display:flex;align-items:center}
 .th{color:var(--mut);text-transform:uppercase;cursor:pointer;user-select:none;white-space:nowrap;gap:3px}
@@ -92,6 +92,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sig-tag{font-size:8px;font-family:var(--disp);font-weight:700;letter-spacing:.05em;padding:3px 6px;border-radius:3px;white-space:nowrap}
 .del-btn{background:transparent;border:none;color:var(--mut);font-size:13px;cursor:pointer;padding:8px 6px;transition:color .15s;line-height:1;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
 .del-btn:hover{color:var(--put)}
+.ref-btn{background:transparent;border:none;color:var(--mut);font-size:11px;cursor:pointer;padding:6px 4px;transition:color .15s,transform .2s;line-height:1;width:100%;display:flex;align-items:center;justify-content:center}
+.ref-btn:hover{color:var(--blue)}
+.ref-btn.spinning{animation:spin .6s linear infinite}
+.actions-col{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0}
 
 .bull{color:var(--call)}.bear{color:var(--put)}.neut{color:var(--neu)}
 
@@ -421,6 +425,17 @@ function addTicker(){
 function removeTicker(t){
   watchlist=watchlist.filter(x=>x!==t);delete scores[t];saveWL();renderTable();
 }
+async function refreshOne(t){
+  const btn=document.getElementById('ref-'+t);
+  if(btn){btn.classList.add('spinning');btn.style.pointerEvents='none';}
+  delete scores[t];
+  renderTable();
+  try{
+    const d=await fetchY(t);
+    const sc=compute(d.closes,d.volumes);sc.name=d.name;scores[t]=sc;
+  }catch(e){scores[t]={error:e.message};}
+  renderTable();
+}
 function setSort(m){
   sortMode=m;
   ['score','ticker','signal','rsi','roc'].forEach(k=>$id('sb-'+k)?.classList.toggle('active',k===m));
@@ -470,13 +485,13 @@ function renderTable(){
       html+=`<div class="tbl-row loading" id="tr-${t}">
         <div class="td ticker-col">${t}</div>
         <div class="td" style="grid-column:2/9"><div class="loading-cell"><div class="mini-spin"></div><span>Caricamento…</span></div></div>
-        <div class="td del-col"><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()">✕</button></div>
+        <div class="td del-col"><div class="actions-col"><button class="ref-btn" id="ref-${t}" onclick="refreshOne('${t}');event.stopPropagation()" title="Aggiorna">↻</button><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()" title="Rimuovi">✕</button></div></div>
       </div>`;
     } else if(sc.error){
       html+=`<div class="tbl-row error-row" id="tr-${t}">
         <div class="td ticker-col">${t}</div>
         <div class="td" style="grid-column:2/9;font-size:9px;color:var(--put)">⚠ ${sc.error}</div>
-        <div class="td del-col"><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()">✕</button></div>
+        <div class="td del-col"><div class="actions-col"><button class="ref-btn" id="ref-${t}" onclick="refreshOne('${t}');event.stopPropagation()" title="Aggiorna">↻</button><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()" title="Rimuovi">✕</button></div></div>
       </div>`;
     } else {
       const s=sigCfg(sc.total);
@@ -495,7 +510,7 @@ function renderTable(){
         <div class="td num-col ${r1Cls}">${fmt(sc.roc1m,1)}%</div>
         <div class="td num-col ${maCls}">${fmt(d200,1)}%</div>
         <div class="td num-col ${macdCls}" style="justify-content:center;font-size:14px">${macdArrow}</div>
-        <div class="td del-col"><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()">✕</button></div>
+        <div class="td del-col"><div class="actions-col"><button class="ref-btn" id="ref-${t}" onclick="refreshOne('${t}');event.stopPropagation()" title="Aggiorna">↻</button><button class="del-btn" onclick="removeTicker('${t}');event.stopPropagation()" title="Rimuovi">✕</button></div></div>
       </div>`;
     }
   });
