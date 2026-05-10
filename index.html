@@ -226,7 +226,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="app">
   <header class="hdr">
     <div><div class="logo">Momentum<span>IQ</span></div><div class="logo-sub">Options Signal Engine</div></div>
-    <div class="v-chip">v5.0</div>
+    <div class="hdr-right">
+      <div class="sync-dot" id="syncDot" title="Stato sync"></div>
+      <button class="btn-gear" onclick="openSettings()" title="Impostazioni Supabase">⚙</button>
+    </div>
   </header>
   <div class="tabs">
     <button class="tab active" onclick="switchTab('wl')">📋 Watchlist</button>
@@ -316,6 +319,25 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div id="dScoreRow"></div>
     <div id="dContent"></div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-ov" id="settingsOv" onclick="closeSettings(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div class="modal-title">⚙ Impostazioni Supabase</div>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="set-lbl">Project URL</div>
+    <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
+    <div class="set-lbl">Anon Key</div>
+    <input class="set-input" id="sbKey" type="password" placeholder="eyJhbGci…" autocomplete="off">
+    <button class="btn-connect" onclick="connectSupabase()">Connetti e Sincronizza</button>
+    <div class="set-status" id="setStatus"></div>
+    <div class="set-divider"></div>
+    <div class="set-lbl" style="margin-bottom:8px">Dati locali</div>
+    <button class="btn-danger" onclick="clearAll()">🗑 Cancella tutti i dati locali</button>
   </div>
 </div>
 
