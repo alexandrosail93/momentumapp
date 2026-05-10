@@ -192,6 +192,34 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .qbtn-wrap .qx:hover{background:var(--put);color:#fff;border-color:var(--put)}
 .btn-reset{background:transparent;border:1px solid var(--bd);color:var(--mut);font-size:14px;border-radius:5px;padding:0 10px;cursor:pointer;transition:all .2s;line-height:1}
 .btn-reset:hover{border-color:var(--put);color:var(--put);background:rgba(255,69,96,.08)}
+
+/* SYNC */
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--mut);flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:var(--call)}
+.sync-dot.err{background:var(--put)}
+.sync-dot.busy{background:var(--neu);animation:pulse 1s ease-in-out infinite}
+.hdr-right{display:flex;align-items:center;gap:8px}
+.btn-gear{background:transparent;border:1px solid var(--bd);color:var(--mut);font-size:14px;width:30px;height:30px;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.btn-gear:hover{color:var(--txt);border-color:var(--bd2)}
+/* SETTINGS MODAL */
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;backdrop-filter:blur(6px)}
+.modal-ov.on{display:flex;align-items:flex-end}
+.modal{background:var(--s1);border-top:1px solid var(--bd);border-radius:14px 14px 0 0;width:100%;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 20px);animation:sup .25s ease}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-family:var(--disp);font-weight:700;font-size:14px;color:#fff}
+.modal-close{background:var(--s2);border:1px solid var(--bd);color:var(--mut);font-size:16px;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.set-lbl{font-size:9px;letter-spacing:.15em;color:var(--mut);text-transform:uppercase;margin-bottom:5px}
+.set-input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:5px;color:#fff;font-family:var(--mono);font-size:11px;padding:10px 12px;outline:none;margin-bottom:12px;-webkit-appearance:none}
+.set-input:focus{border-color:var(--blue)}
+.set-input::placeholder{color:var(--mut)}
+.btn-connect{width:100%;background:var(--blue);color:#fff;font-family:var(--disp);font-weight:700;font-size:11px;letter-spacing:.06em;border:none;border-radius:6px;padding:12px;cursor:pointer;margin-top:4px;transition:opacity .2s}
+.btn-connect:hover{opacity:.85}
+.set-status{font-size:10px;text-align:center;margin-top:8px;min-height:16px;color:var(--mut)}
+.set-status.ok{color:var(--call)}
+.set-status.err{color:var(--put)}
+.set-divider{height:1px;background:var(--bd);margin:16px 0}
+.btn-danger{width:100%;background:transparent;border:1px solid rgba(255,69,96,.3);color:var(--put);font-family:var(--mono);font-size:10px;border-radius:6px;padding:10px;cursor:pointer;transition:all .2s}
+.btn-danger:hover{background:rgba(255,69,96,.08)}
 </style>
 </head>
 <body>
@@ -306,10 +334,142 @@ let sortMode  = 'score';
 let collapsed = new Set();
 let lastRes   = null;
 
-function saveWL()     { localStorage.setItem(WL_KEY,    JSON.stringify(watchlist)); }
+function saveWL()     { localStorage.setItem(WL_KEY,    JSON.stringify(watchlist)); syncToSupabase(); }
 function saveAlerts() { localStorage.setItem(ALERT_KEY, JSON.stringify(alerts));    }
 function $id(id)      { return document.getElementById(id); }
 function fmt(n, d=2)  { return (n >= 0 ? '+' : '') + n.toFixed(d); }
+
+// ── SUPABASE SYNC ─────────────────────────────────────────────────────────
+const SB_URL_KEY = 'miq_sb_url';
+const SB_KEY_KEY = 'miq_sb_key';
+function sbUrl()   { return localStorage.getItem(SB_URL_KEY) || ''; }
+function sbKey()   { return localStorage.getItem(SB_KEY_KEY) || ''; }
+function sbReady() { return !!(sbUrl() && sbKey()); }
+
+function setSyncDot(state) {
+  const d = $id('syncDot');
+  if (!d) return;
+  d.className = 'sync-dot' + (state ? ' '+state : '');
+}
+
+async function sbReq(path, opts={}) {
+  const r = await fetch(sbUrl()+path, {
+    ...opts,
+    headers: {
+      'apikey': sbKey(), 'Authorization': 'Bearer '+sbKey(),
+      'Content-Type': 'application/json',
+      ...(opts.headers||{})
+    }
+  });
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  return r;
+}
+
+async function sbGet(key) {
+  if (!sbReady()) return null;
+  try {
+    const r = await sbReq('/rest/v1/data?key=eq.'+key+'&select=value');
+    const rows = await r.json();
+    return rows?.[0]?.value ?? null;
+  } catch(e) { return null; }
+}
+
+async function sbSet(key, value) {
+  if (!sbReady()) return;
+  try {
+    await sbReq('/rest/v1/data', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ key, value })
+    });
+  } catch(e) {}
+}
+
+let syncTimer = null;
+function syncToSupabase() {
+  if (!sbReady()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    setSyncDot('busy');
+    try {
+      await Promise.all([
+        sbSet('watchlist', watchlist),
+        sbSet('customBtns', customBtns)
+      ]);
+      setSyncDot('ok');
+      setTimeout(() => setSyncDot(''), 3000);
+    } catch(e) { setSyncDot('err'); }
+  }, 800); // debounce 800ms
+}
+
+async function syncFromSupabase() {
+  if (!sbReady()) return;
+  setSyncDot('busy');
+  try {
+    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
+    if (wl && Array.isArray(wl)) { watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl)); }
+    if (cb && typeof cb === 'object') {
+      customBtns = { us: cb.us||[], it: cb.it||[] };
+      localStorage.setItem(CUST_KEY, JSON.stringify(customBtns));
+    }
+    setSyncDot('ok');
+    setTimeout(() => setSyncDot(''), 3000);
+  } catch(e) { setSyncDot('err'); }
+}
+
+function openSettings() {
+  $id('sbUrl').value = sbUrl();
+  $id('sbKey').value = sbKey();
+  const connected = sbReady();
+  $id('setStatus').textContent = connected ? '✓ Supabase connesso' : '';
+  $id('setStatus').className = 'set-status' + (connected ? ' ok' : '');
+  $id('settingsOv').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSettings(e) {
+  if (e && e.target !== $id('settingsOv')) return;
+  $id('settingsOv').classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+async function connectSupabase() {
+  const url = $id('sbUrl').value.trim().replace(/\/+$/, '');
+  const key = $id('sbKey').value.trim();
+  if (!url || !key) {
+    $id('setStatus').textContent = '⚠ Inserisci URL e chiave';
+    $id('setStatus').className = 'set-status err'; return;
+  }
+  $id('setStatus').textContent = 'Connessione in corso…';
+  $id('setStatus').className = 'set-status';
+  try {
+    const r = await fetch(url+'/rest/v1/data?limit=1', {
+      headers: { 'apikey': key, 'Authorization': 'Bearer '+key }
+    });
+    if (!r.ok) throw new Error('HTTP '+r.status+' — controlla URL e chiave');
+    localStorage.setItem(SB_URL_KEY, url);
+    localStorage.setItem(SB_KEY_KEY, key);
+    $id('setStatus').textContent = 'Connesso! Sincronizzazione…';
+    $id('setStatus').className = 'set-status ok';
+    // Pull cloud data first
+    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
+    if (wl && Array.isArray(wl) && wl.length > 0) {
+      watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl));
+      if (cb) { customBtns={us:cb.us||[],it:cb.it||[]}; localStorage.setItem(CUST_KEY, JSON.stringify(customBtns)); }
+      $id('setStatus').textContent = '✓ '+wl.length+' ticker caricati dal cloud';
+    } else {
+      await Promise.all([sbSet('watchlist',watchlist), sbSet('customBtns',customBtns)]);
+      $id('setStatus').textContent = '✓ Dati locali salvati sul cloud';
+    }
+    $id('setStatus').className = 'set-status ok';
+    setSyncDot('ok');
+    renderTable(); updateQBtns(); renderCustomBtns();
+    if (watchlist.length > 0) { closeSettings(); refreshAll(); }
+  } catch(e) {
+    $id('setStatus').textContent = '⚠ '+e.message;
+    $id('setStatus').className = 'set-status err';
+  }
+}
 
 
 // ── CACHE ────────────────────────────────────────────────────────────────
@@ -640,7 +800,7 @@ async function resolveTicker(input) {
 // ── CUSTOM QUICK BUTTONS (stored by nation) ───────────────────────────────
 const CUST_KEY = 'miq_custom_v1';
 let customBtns = JSON.parse(localStorage.getItem(CUST_KEY) || '{"us":[],"it":[]}');
-function saveCustom() { localStorage.setItem(CUST_KEY, JSON.stringify(customBtns)); }
+function saveCustom() { localStorage.setItem(CUST_KEY, JSON.stringify(customBtns)); syncToSupabase(); }
 
 function getNation(ticker) {
   // Italian exchange suffixes → Italy; everything else → USA/other
@@ -1003,6 +1163,14 @@ $id('sT').addEventListener('keydown',e=>{ if(e.key==='Enter') analyze(); });
 
 renderTable();
 updateQBtns();
+renderCustomBtns();
+setSyncDot(sbReady() ? 'ok' : '');
+if (sbReady()) {
+  syncFromSupabase().then(() => {
+    renderTable(); updateQBtns(); renderCustomBtns();
+    if (watchlist.length > 0) refreshAll();
+  });
+} else
 if (watchlist.length > 0) {
   const cached = loadCache();
   if (cached) {
