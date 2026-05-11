@@ -295,7 +295,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div class="sort-row">
       <span class="slbl">Ordina:</span>
-      <button class="sb active" id="sb-score" onclick="setSort('score')">Score ↓</button>
+      <button class="sb active" id="sb-score" onclick="setSort('score')">Media ↓</button>
+      <button class="sb" id="sb-call" onclick="setSort('call')">CALL ↓</button>
+      <button class="sb" id="sb-put" onclick="setSort('put')">PUT ↓</button>
       <button class="sb" id="sb-ticker" onclick="setSort('ticker')">A–Z</button>
       <button class="sb" id="sb-rsi" onclick="setSort('rsi')">RSI</button>
       <button class="sb" id="sb-roc" onclick="setSort('roc')">ROC 1M</button>
@@ -946,7 +948,7 @@ function updateQBtns() {
 
 function setSort(m) {
   sortMode = m;
-  ['score','ticker','rsi','roc'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
+  ['score','call','put','ticker','rsi','roc'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
   renderTable();
 }
 
@@ -954,9 +956,11 @@ function sortedWL() {
   return [...watchlist].sort((a,b) => {
     const sa=scores[a], sb=scores[b];
     if (sortMode==='ticker') return a.localeCompare(b);
-    if (sortMode==='score')  return (sb?.total??-1)-(sa?.total??-1);
+    if (sortMode==='score')  return ((sb?.callScore??0)+(sb?.putScore??0))/2 - ((sa?.callScore??0)+(sa?.putScore??0))/2;
+    if (sortMode==='call')   return (sb?.callScore??sb?.total??-1)-(sa?.callScore??sa?.total??-1);
+    if (sortMode==='put')    return (sb?.putScore??-1)-(sa?.putScore??-1);
     if (sortMode==='rsi')    return (sb?.rsi??50)-(sa?.rsi??50);
-    if (sortMode==='roc')    return (sb?.r1??0)-(sa?.r1??0);
+    if (sortMode==='roc')    return (sb?.roc1m??0)-(sa?.roc1m??0);
     return 0;
   });
 }
