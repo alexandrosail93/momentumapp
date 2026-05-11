@@ -60,18 +60,29 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sb{font-size:8px;color:var(--mut);background:var(--s1);border:1px solid var(--bd);border-radius:3px;padding:4px 8px;cursor:pointer;transition:all .15s;font-family:var(--mono);white-space:nowrap;flex-shrink:0}
 .sb.active{color:var(--blue);border-color:var(--blue);background:rgba(58,143,255,.08)}
 /* TABLE */
-.tbl-outer{border:1px solid var(--bd);border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:10px}
-.tbl-inner{min-width:500px}
-.tbl-head{display:grid;grid-template-columns:62px 66px 46px 10px 88px 36px 50px 58px 34px 44px;background:var(--s2);border-bottom:1px solid var(--bd2)}
-.tbl-row{display:grid;grid-template-columns:62px 66px 46px 10px 88px 36px 50px 58px 34px 44px;border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
+/* ── TABLE: always grid, horizontal scroll on small screens ── */
+.tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
+.tbl-inner{min-width:900px}
+:root{--tbl-cols: 80px 110px 46px 46px 58px 10px 96px 40px 52px 66px 52px 48px 48px 48px 40px}
+.tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
+.tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
 .tbl-row:active{background:rgba(58,143,255,.04)}
 .tbl-row.loading{opacity:.55;cursor:default}
 .tbl-row.row-err{opacity:.6;cursor:default}
 .tbl-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--rc,transparent)}
-.th,.td{padding:7px 5px;font-size:9px;letter-spacing:.05em;display:flex;align-items:center}
+.th,.td{padding:7px 5px;font-size:9px;letter-spacing:.05em;display:flex;align-items:center;min-width:0;overflow:hidden}
 .th{color:var(--mut);text-transform:uppercase;white-space:nowrap}
 .td{color:var(--txt);font-size:10px}
+.td.tkr{font-family:var(--disp);font-weight:700;font-size:12px;color:#fff;white-space:nowrap;text-overflow:ellipsis}
+.td.nm{font-size:9px;color:var(--mut);white-space:nowrap;text-overflow:ellipsis}
+.td.sc{font-family:var(--disp);font-weight:900;font-size:15px;justify-content:center}
+.td.sig{padding-right:4px}
+.td.nr{justify-content:flex-end;padding-right:8px}
+.td.live{flex-direction:column;align-items:flex-end;padding:4px 8px 4px 2px;gap:1px}
+.td.ctr{justify-content:center}
+.td.spark{justify-content:center;padding:4px}
+.td.act{justify-content:center;padding:0}
 .td.tkr{font-family:var(--disp);font-weight:700;font-size:11px;color:#fff;letter-spacing:.04em;flex-wrap:wrap;gap:3px}
 .td.sc{font-family:var(--disp);font-weight:900;font-size:15px;justify-content:center}
 .td.sig{padding-left:3px}
@@ -83,11 +94,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .live-p{font-size:10px;font-weight:500;color:#fff}
 .live-d{font-size:8px}
 .sig-tag{font-size:8px;font-family:var(--disp);font-weight:700;letter-spacing:.04em;padding:3px 6px;border-radius:3px;white-space:nowrap}
-.act-wrap{display:flex;flex-direction:column;gap:0;align-items:center;width:100%}
-.ref-btn{background:transparent;border:none;color:var(--mut);font-size:11px;cursor:pointer;padding:5px 4px;transition:color .15s;line-height:1;width:100%;display:flex;align-items:center;justify-content:center}
+.ref-btn{background:transparent;border:none;color:var(--mut);font-size:13px;cursor:pointer;padding:4px 5px;transition:color .15s;line-height:1;display:flex;align-items:center;justify-content:center}
 .ref-btn:hover{color:var(--blue)}
 .ref-btn.spinning{animation:spin .6s linear infinite}
-.del-btn{background:transparent;border:none;color:var(--mut);font-size:12px;cursor:pointer;padding:5px 4px;transition:color .15s;line-height:1;width:100%;display:flex;align-items:center;justify-content:center}
+.del-btn{background:transparent;border:none;color:var(--mut);font-size:13px;cursor:pointer;padding:4px 5px;transition:color .15s;line-height:1;display:flex;align-items:center;justify-content:center}
 .del-btn:hover{color:var(--put)}
 .lc{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--mut)}
 .mspin{width:10px;height:10px;border:1.5px solid var(--bd2);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
@@ -220,6 +230,25 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .set-divider{height:1px;background:var(--bd);margin:16px 0}
 .btn-danger{width:100%;background:transparent;border:1px solid rgba(255,69,96,.3);color:var(--put);font-family:var(--mono);font-size:10px;border-radius:6px;padding:10px;cursor:pointer;transition:all .2s}
 .btn-danger:hover{background:rgba(255,69,96,.08)}
+
+/* DESKTOP LAYOUT */
+@media (min-width: 700px) {
+  .app { max-width: 1100px; padding-left: 32px; padding-right: 32px; }
+  .search-card, .s-card { max-width: 480px; }
+  .add-row { max-width: 480px; }
+  .top-bar { max-width: none; }
+  .sort-row { max-width: none; }
+  .tbl-outer { border-radius: 10px; }
+  .td.nm { font-size: 11px; color: var(--txt); }
+  .td.tkr { font-size: 13px; }
+}
+
+@media (min-width: 700px) {
+  .sig-tag-full { display: inline; }
+  .sig-tag-short { display: none; }
+}
+.sig-tag-full { display: none; }
+.sig-tag-short { display: inline; }
 </style>
 </head>
 <body>
@@ -673,55 +702,78 @@ function macdCalc(cl) {
 
 function compute(cl, vo) {
   const n=cl.length, p0=cl[n-1];
-  // EMA instead of SMA for moving averages
   const m20=ema(cl,20), m50=ema(cl,50), m200=ema(cl,200);
   const vol=vo[n-1], avg=vo.slice(-20).reduce((s,v)=>s+v,0)/20, vr=vol/avg;
-  // Exponentially weighted ROC (recent moves count more)
   const r1=expROC(cl,22),  r3=expROC(cl,66);
   const r6=expROC(cl,132), r12=expROC(cl,252);
-  // Raw ROC 1M for display only
   const roc1mRaw = n>23 ? (p0-cl[n-23])/cl[n-23]*100 : 0;
   const rv = rsiCalc(cl.slice(-60));
   const mc = macdCalc(cl.slice(-80));
   const bb = bollinger(cl, 20, 2);
   const roc=(r,o,m)=>Math.min(Math.max((r+o)/(2*o)*m,0),m);
   const mvs=(p,m,mx)=>!m?0:p>m?(p/m>1.05?mx:mx*.5):0;
-  // Ribilanciamento pesi: totale base 100 + Bollinger 14pt
-  const s1=roc(r1,15,8),  s2=roc(r3,20,10), s3=roc(r6,25,10), s4=roc(r12,30,6);
-  const s5=mvs(p0,m20,6), s6=mvs(p0,m50,6), s7=mvs(p0,m200,6);
-  const s8=(m20>m50?3:0)+(m50>m200?3:0);
-  const s9=Math.min(Math.max((vr-.5)/1.5*8,0),8);
-  const s10=rv<30?9:rv<45?4:rv<55?5:rv<70?7:2;
-  const s11=mc.macd>mc.signal?(mc.hist>mc.histY?10:6):(mc.hist>mc.histY?4:0);
-  const s12=bb.s;
+  const mvsInv=(p,m,mx)=>!m?0:p<m?(p/m<0.95?mx:mx*.5):0;
+
+  // ── CALL SCORE ───────────────────────────────────────────────────────
+  const c1=roc(r1,15,8),   c2=roc(r3,20,10), c3=roc(r6,25,10), c4=roc(r12,30,6);
+  const c5=mvs(p0,m20,6),  c6=mvs(p0,m50,6), c7=mvs(p0,m200,6);
+  const c8=(m20>m50?3:0)+(m50>m200?3:0);
+  const c9=Math.min(Math.max((vr-.5)/1.5*8,0),8);
+  const c10=rv<30?9:rv<45?4:rv<55?5:rv<70?7:2;
+  const c11=mc.macd>mc.signal?(mc.hist>mc.histY?10:6):(mc.hist>mc.histY?4:0);
+  const c12=bb.s; // near lower band = bullish
+  const callTotal=c1+c2+c3+c4+c5+c6+c7+c8+c9+c10+c11+c12;
+
+  // ── PUT SCORE (mirror logic) ──────────────────────────────────────────
+  // ROC: negative momentum favors PUT
+  const p1=roc(-r1,15,8),  p2=roc(-r3,20,10), p3=roc(-r6,25,10), p4=roc(-r12,30,6);
+  // Price BELOW MAs favors PUT
+  const p5=mvsInv(p0,m20,6), p6=mvsInv(p0,m50,6), p7=mvsInv(p0,m200,6);
+  // MA bearish alignment: EMA20 < EMA50 < EMA200
+  const p8=(m20<m50?3:0)+(m50<m200?3:0);
+  // Volume (same — high volume confirms direction)
+  const p9=Math.min(Math.max((vr-.5)/1.5*8,0),8);
+  // RSI: overbought (>70) favors PUT, oversold (<30) does NOT favor PUT
+  const p10=rv>70?9:rv>55?7:rv>45?5:rv>30?4:2;
+  // MACD: below signal + histogram falling = PUT signal
+  const p11=mc.macd<mc.signal?(mc.hist<mc.histY?10:6):(mc.hist<mc.histY?4:0);
+  // Bollinger: near UPPER band favors PUT (inverted)
+  const bbPct=parseFloat(bb.pct);
+  const p12=bbPct>=90?14:bbPct>=70?11:bbPct>=50?7:bbPct>=30?4:bbPct>=10?1:0;
+  const putTotal=p1+p2+p3+p4+p5+p6+p7+p8+p9+p10+p11+p12;
+
   return {
-    total:s1+s2+s3+s4+s5+s6+s7+s8+s9+s10+s11+s12,
+    callScore: callTotal, putScore: putTotal,
+    total: callTotal, // keep for backward compat
     p0, roc1m:roc1mRaw, ma20:m20, ma50:m50, ma200:m200, vr, rsi:rv, bb, ...mc,
     c30: cl.slice(-30),
     cmp:[
-      {l:'ROC 1M (exp.)',      p:s1,  m:8 },
-      {l:'ROC 3M (exp.)',      p:s2,  m:10},
-      {l:'ROC 6M (exp.)',      p:s3,  m:10},
-      {l:'ROC 12M (exp.)',     p:s4,  m:6 },
-      {l:'Prezzo vs EMA20',    p:s5,  m:6 },
-      {l:'Prezzo vs EMA50',    p:s6,  m:6 },
-      {l:'Prezzo vs EMA200',   p:s7,  m:6 },
-      {l:'Allineam. EMA',      p:s8,  m:6 },
-      {l:'Volume Mom.',        p:s9,  m:8 },
-      {l:'RSI 14',             p:s10, m:10},
-      {l:'MACD',               p:s11, m:10},
-      {l:'Bollinger Bands',    p:s12, m:14}
+      {l:'ROC 1M (exp.)',    pc:c1,  pp:p1,  m:8 },
+      {l:'ROC 3M (exp.)',    pc:c2,  pp:p2,  m:10},
+      {l:'ROC 6M (exp.)',    pc:c3,  pp:p3,  m:10},
+      {l:'ROC 12M (exp.)',   pc:c4,  pp:p4,  m:6 },
+      {l:'Prezzo vs EMA20',  pc:c5,  pp:p5,  m:6 },
+      {l:'Prezzo vs EMA50',  pc:c6,  pp:p6,  m:6 },
+      {l:'Prezzo vs EMA200', pc:c7,  pp:p7,  m:6 },
+      {l:'Allineam. EMA',    pc:c8,  pp:p8,  m:6 },
+      {l:'Volume Mom.',      pc:c9,  pp:p9,  m:8 },
+      {l:'RSI 14',           pc:c10, pp:p10, m:10},
+      {l:'MACD',             pc:c11, pp:p11, m:10},
+      {l:'Bollinger Bands',  pc:c12, pp:p12, m:14}
     ]
   };
 }
 
+
 // ── SIGNAL ───────────────────────────────────────────────────────────────
-function sigCfg(s) {
-  if (s>=70) return {lb:'CALL ↑↑',c:'#00E5A0',bg:'rgba(0,229,160,.12)',bd:'rgba(0,229,160,.3)'};
-  if (s>=55) return {lb:'CALL ↑', c:'#80D050',bg:'rgba(128,208,80,.1)',bd:'rgba(128,208,80,.25)'};
-  if (s>=45) return {lb:'NEUTRO', c:'#FFB020',bg:'rgba(255,176,32,.1)',bd:'rgba(255,176,32,.25)'};
-  if (s>=30) return {lb:'PUT ↓',  c:'#FF8040',bg:'rgba(255,128,64,.1)',bd:'rgba(255,128,64,.25)'};
-  return            {lb:'PUT ↓↓', c:'#FF4560',bg:'rgba(255,69,96,.12)',bd:'rgba(255,69,96,.3)'};
+function sigCfg(callS, putS) {
+  const diff = (callS||0) - (putS||0);
+  const mx   = Math.max(callS||0, putS||0);
+  if (diff >= 20 && mx >= 55) return {lb:'CALL ↑↑',c:'#00E5A0',bg:'rgba(0,229,160,.12)',bd:'rgba(0,229,160,.3)'};
+  if (diff >= 8  && mx >= 40) return {lb:'CALL ↑', c:'#80D050',bg:'rgba(128,208,80,.1)', bd:'rgba(128,208,80,.25)'};
+  if (diff <= -20 && mx >= 55) return {lb:'PUT ↓↓',c:'#FF4560',bg:'rgba(255,69,96,.12)', bd:'rgba(255,69,96,.3)'};
+  if (diff <= -8  && mx >= 40) return {lb:'PUT ↓',  c:'#FF8040',bg:'rgba(255,128,64,.1)',bd:'rgba(255,128,64,.25)'};
+  return {lb:'NEUTRO',c:'#FFB020',bg:'rgba(255,176,32,.1)',bd:'rgba(255,176,32,.25)'};
 }
 
 function bcol(p, m) { const r=p/m; return r>=.75?'var(--call)':r>=.4?'var(--neu)':'var(--put)'; }
@@ -916,7 +968,8 @@ function buildRows(list) {
     if (!sc) {
       h += '<div class="tbl-row loading">'
         + '<div class="td tkr">'+t+'</div>'
-        + '<div class="td" style="grid-column:2/10"><div class="lc"><div class="mspin"></div>Caricamento…</div></div>'
+        + '<div class="td nm" style="color:var(--mut);font-size:9px">…</div>'
+        + '<div class="td" style="grid-column:4/12"><div class="lc"><div class="mspin"></div>Caricamento…</div></div>'
         + '<div class="td act"><div class="act-wrap">'
         + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
         + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
@@ -924,13 +977,13 @@ function buildRows(list) {
     } else if (sc.error) {
       h += '<div class="tbl-row row-err">'
         + '<div class="td tkr">'+t+'</div>'
-        + '<div class="td" style="grid-column:2/10;font-size:9px;color:var(--put)">⚠ '+sc.error+'</div>'
-        + '<div class="td act"><div class="act-wrap">'
+        + '<div class="td nm" style="flex:1;font-size:9px;color:var(--put)">⚠ '+sc.error+'</div>'
+        + '<div class="td act">'
         + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
         + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
-        + '</div></div></div>';
+        + '</div></div>';
     } else {
-      const s = sigCfg(sc.total);
+      const s = sigCfg(sc.callScore??sc.total, sc.putScore??0);
       const d200 = sc.ma200 ? (sc.p0-sc.ma200)/sc.ma200*100 : 0;
       const rsiCls = sc.rsi<30?'bull':sc.rsi>70?'bear':'neut';
       const r1Cls  = sc.roc1m>=0?'bull':'bear';
@@ -942,15 +995,27 @@ function buildRows(list) {
       const lpH    = sc.livePrice
         ? '<div class="live-p">$'+sc.livePrice.toFixed(2)+'</div><div class="live-d '+(sc.intradayPct>=0?'bull':'bear')+'">'+(sc.intradayPct!=null?fmt(sc.intradayPct,1)+'%':'')+'</div>'
         : '<div class="live-p">$'+sc.p0.toFixed(2)+'</div>';
+      const d200pct = sc.ma200 ? (sc.p0-sc.ma200)/sc.ma200*100 : null;
+      const bbPct   = sc.bb ? parseFloat(sc.bb.pct) : null;
+      const d200Cls = d200pct!=null ? (d200pct>=0?'bull':'bear') : '';
+      const bbCls   = bbPct!=null ? (bbPct<35?'bull':bbPct>65?'bear':'neut') : '';
+      const volCls  = sc.vr>=1.3?'bull':sc.vr<0.7?'bear':'neut';
+      const isDesk = true; // always show all columns (table scrolls)
+      const deskCells = '<div class="td nr '+d200Cls+'">'+(d200pct!=null?fmt(d200pct,1)+'%':'—')+'</div>'
+        + '<div class="td nr '+bbCls+'">'+(bbPct!=null?bbPct.toFixed(0)+'%':'—')+'</div>'
+        + '<div class="td nr '+volCls+'">'+(sc.vr?sc.vr.toFixed(2)+'x':'—')+'</div>';
       h += '<div class="tbl-row" style="--rc:'+s.c+'" onclick="openDetail(\''+t+'\')">'
         + '<div class="td tkr">'+t+' '+abH+'</div>'
+        + '<div class="td nm">'+(sc.name||'').split(' ').slice(0,3).join(' ')+'</div>'
+        + '<div class="td sc" style="color:#00E5A0;justify-content:center">'+Math.round(sc.callScore??sc.total)+'</div>'
+        + '<div class="td sc" style="color:#FF4560;justify-content:center">'+Math.round(sc.putScore??0)+'</div>'
         + '<div class="td spark">'+sparkline(sc.c30)+'</div>'
-        + '<div class="td sc" style="color:'+s.c+'">'+Math.round(sc.total)+'</div>'
         + '<div class="td ctr">'+trH+'</div>'
         + '<div class="td sig"><span class="sig-tag" style="background:'+s.bg+';color:'+s.c+';border:1px solid '+s.bd+'">'+s.lb+'</span></div>'
         + '<div class="td nr '+rsiCls+'">'+sc.rsi.toFixed(0)+'</div>'
         + '<div class="td nr '+r1Cls+'">'+fmt(sc.roc1m,1)+'%</div>'
         + '<div class="td live">'+lpH+'</div>'
+        + deskCells
         + '<div class="td ctr '+mCls+'" style="font-size:13px">'+(sc.macd>sc.signal?'↑':'↓')+'</div>'
         + '<div class="td act"><div class="act-wrap">'
         + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
@@ -961,18 +1026,25 @@ function buildRows(list) {
   return h;
 }
 
-const THEAD = '<div class="tbl-head">'
-  + '<div class="th">Ticker</div>'
-  + '<div class="th" style="justify-content:center">Spark</div>'
-  + '<div class="th" style="justify-content:center">Score</div>'
-  + '<div class="th"></div>'
-  + '<div class="th">Segnale</div>'
-  + '<div class="th" style="justify-content:flex-end;padding-right:7px">RSI</div>'
-  + '<div class="th" style="justify-content:flex-end;padding-right:7px">ROC 1M</div>'
-  + '<div class="th" style="justify-content:flex-end;padding-right:7px">Prezzo</div>'
-  + '<div class="th" style="justify-content:center">MACD</div>'
-  + '<div class="th"></div>'
-  + '</div>';
+function buildTHEAD() {
+  return '<div class="tbl-head">'
+    + '<div class="th">Ticker</div>'
+    + '<div class="th">Nome</div>'
+    + '<div class="th" style="justify-content:center;color:#00E5A0">CALL</div>'
+    + '<div class="th" style="justify-content:center;color:#FF4560">PUT</div>'
+    + '<div class="th" style="justify-content:center">Spark</div>'
+    + '<div class="th"></div>'
+    + '<div class="th">Segnale</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">RSI</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">ROC 1M</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">Prezzo</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">MA200%</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">BB %B</div>'
+    + '<div class="th" style="justify-content:center">Vol</div>'
+    + '<div class="th" style="justify-content:center">MACD</div>'
+    + '<div class="th"></div>'
+    + '</div>';
+}
 
 function renderTable() {
   const list = sortedWL();
@@ -986,7 +1058,7 @@ function renderTable() {
   }
 
  else {
-    el.innerHTML = '<div class="tbl-outer"><div class="tbl-inner">'+THEAD+buildRows(list)+'</div></div>';
+    el.innerHTML = '<div class="tbl-outer"><div class="tbl-inner">'+buildTHEAD()+buildRows(list)+'</div></div>';
   }
 }
 
@@ -1044,23 +1116,40 @@ async function refreshAll() {
 // ── DETAIL ────────────────────────────────────────────────────────────────
 function openDetail(t) {
   const sc = scores[t]; if (!sc || sc.error) return;
-  const s = sigCfg(sc.total);
+  const s = sigCfg(sc.callScore??sc.total, sc.putScore??0);
   const d200 = sc.ma200 ? (sc.p0-sc.ma200)/sc.ma200*100 : 0;
   $id('dTkr').textContent = t;
   $id('dName').textContent = sc.name || '';
-  $id('dScoreRow').innerHTML = '<div class="score-hero-row">'
-    + '<div class="score-hero-n" style="color:'+s.c+'">'+Math.round(sc.total)+'<span style="font-size:16px;color:var(--mut);font-family:var(--mono);font-weight:400">/100</span></div>'
-    + '<div><span class="sig-tag" style="background:'+s.bg+';color:'+s.c+';border:1px solid '+s.bd+';font-size:11px;padding:6px 14px">'+s.lb+'</span>'
-    + (sc.livePrice ? '<div style="font-size:10px;color:var(--mut);margin-top:5px">$'+sc.livePrice.toFixed(2)+' <span class="'+(sc.intradayPct>=0?'bull':'bear')+'">'+fmt(sc.intradayPct||0,1)+'%</span></div>' : '')
-    + '</div></div>';
+  const callScr = sc.callScore ?? sc.total;
+  const putScr  = sc.putScore  ?? 0;
+  const sigD    = sigCfg(callScr, putScr);
+  $id('dScoreRow').innerHTML =
+    '<div style="display:flex;gap:10px;margin-bottom:14px">'
+    +'<div style="flex:1;background:rgba(0,229,160,.06);border:1px solid rgba(0,229,160,.2);border-radius:8px;padding:12px;text-align:center">'
+    +'<div style="font-size:9px;color:#00E5A0;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px">CALL Score</div>'
+    +'<div style="font-family:var(--disp);font-weight:900;font-size:32px;color:#00E5A0;line-height:1">'+Math.round(callScr)+'<span style="font-size:12px;color:var(--mut);font-weight:400">/100</span></div>'
+    +'</div>'
+    +'<div style="flex:1;background:rgba(255,69,96,.06);border:1px solid rgba(255,69,96,.2);border-radius:8px;padding:12px;text-align:center">'
+    +'<div style="font-size:9px;color:#FF4560;letter-spacing:.14em;text-transform:uppercase;margin-bottom:4px">PUT Score</div>'
+    +'<div style="font-family:var(--disp);font-weight:900;font-size:32px;color:#FF4560;line-height:1">'+Math.round(putScr)+'<span style="font-size:12px;color:var(--mut);font-weight:400">/100</span></div>'
+    +'</div></div>'
+    +'<div style="text-align:center;margin-bottom:14px"><span class="sig-tag" style="background:'+sigD.bg+';color:'+sigD.c+';border:1px solid '+sigD.bd+';font-size:12px;padding:6px 20px">'+sigD.lb+'</span></div>';
 
   // Breakdown
-  let bk = '<div class="ctit">Score Breakdown</div>';
+  let bk = '<div class="ctit">Breakdown — <span style="color:#00E5A0">CALL</span> vs <span style="color:#FF4560">PUT</span></div>';
   sc.cmp.forEach((c,i) => {
     if (i===sc.cmp.length-1) bk += '<div class="bkdiv"></div>';
+    const cp = c.pc ?? c.p ?? 0, pp = c.pp ?? 0;
     bk += '<div class="bk-row"><div class="bk-l">'+c.l+'</div>'
-      + '<div class="bk-t"><div class="bk-f" style="width:'+Math.round(c.p/c.m*100)+'%;background:'+bcol(c.p,c.m)+'"></div></div>'
-      + '<div class="bk-p">'+c.p.toFixed(1)+'</div><div class="bk-m">/'+c.m+'</div></div>';
+      + '<div style="flex:1;display:flex;flex-direction:column;gap:2px">'
+      + '<div class="bk-t"><div class="bk-f" style="width:'+Math.round(cp/c.m*100)+'%;background:#00E5A0;opacity:.85"></div></div>'
+      + '<div class="bk-t"><div class="bk-f" style="width:'+Math.round(pp/c.m*100)+'%;background:#FF4560;opacity:.85"></div></div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:2px;min-width:24px;text-align:right">'
+      + '<div style="font-size:9px;color:#00E5A0;font-weight:600">'+cp.toFixed(0)+'</div>'
+      + '<div style="font-size:9px;color:#FF4560;font-weight:600">'+pp.toFixed(0)+'</div>'
+      + '</div>'
+      + '<div class="bk-m">/'+c.m+'</div></div>';
   });
 
   // History
@@ -1118,7 +1207,7 @@ function hideSt() { $id('sb2').className='sbar'; }
 function qk(t) { $id('sT').value=t; analyze(); }
 
 function renderSearch(sc, nm, t) {
-  const s = sigCfg(sc.total);
+  const s = sigCfg(sc.callScore??sc.total, sc.putScore??0);
   $id('rT').textContent = t; $id('rN').textContent = nm;
   const rScore = $id('rScore'); rScore.innerHTML = Math.round(sc.total)+'<small>/100</small>'; rScore.style.color=s.c;
   const rSig=$id('rSig'); rSig.textContent=s.lb; rSig.style.background=s.bg; rSig.style.color=s.c; rSig.style.border='1px solid '+s.bd;
