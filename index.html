@@ -363,10 +363,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="modal-title">⚙ Impostazioni</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-    <div class="set-lbl">Anthropic API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali)</span></div>
-    <input class="set-input" id="antKey" type="password" placeholder="sk-ant-..." autocomplete="off">
-    <button class="btn-connect" onclick="saveAntKey()" style="margin-bottom:14px">Salva chiave Anthropic</button>
-    <div class="set-divider"></div>
     <div class="set-lbl">Supabase — Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
     <div class="set-lbl">Anon Key</div>
@@ -1110,125 +1106,108 @@ let fundamentals = JSON.parse(localStorage.getItem(FUND_KEY) || '{}');
 function saveFund() { localStorage.setItem(FUND_KEY, JSON.stringify(fundamentals)); }
 
 async function fetchFundamentals(ticker) {
-  // Step 1: basic quote via proxy (fwdPE, beta, target, rec, mktCap, etc.)
-  const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
-  let basic = {};
-  for (const proxyFn of [
+  // Use the same v8/finance/chart endpoint that already works for prices
+  // It contains summary profile data including some fundamentals
+  // Plus v7/finance/quote for key ratios
+
+  const proxies = [
     u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
     u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
     u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  ]) {
-    try {
-      const r   = await fetch(proxyFn(quoteUrl), { signal: AbortSignal.timeout(10000) });
-      const raw = await r.json();
-      const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
-      const j   = typeof txt === 'string' ? JSON.parse(txt) : raw;
-      const q   = j?.quoteResponse?.result?.[0];
-      if (q) { basic = q; break; }
-    } catch(e) {}
+  ];
+
+  async function tryFetch(url) {
+    for (const pFn of proxies) {
+      try {
+        const r = await fetch(pFn(url), { signal: AbortSignal.timeout(12000) });
+        if (!r.ok) continue;
+        const raw = await r.json();
+        const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
+        return typeof txt === 'string' ? JSON.parse(txt) : raw;
+      } catch(e) {}
+    }
+    return null;
   }
 
-  // Step 2: Claude API + web_search for fundamentals + OE components
-  const prompt = `Search Yahoo Finance or Macrotrends for the latest annual financial data for stock ticker "${ticker}".
+  // v7/finance/quote with fundamental fields — flat structure, works well via proxy
+  const fields = [
+    'trailingPE','forwardPE','priceToBook','priceToSalesTrailing12Months',
+    'pegRatio','beta','marketCap','sharesOutstanding',
+    'returnOnEquity','returnOnAssets','profitMargins','grossMargins','operatingMargins',
+    'debtToEquity','currentRatio','quickRatio',
+    'totalCash','totalDebt','freeCashflow','operatingCashflow',
+    'ebitda','enterpriseValue','enterpriseToEbitda',
+    'earningsGrowth','revenueGrowth','totalRevenue',
+    'targetMeanPrice','recommendationMean',
+    'fiftyTwoWeekChangePercent','regularMarketPrice'
+  ].join(',');
 
-Return ONLY a raw JSON object, no markdown, no text outside the JSON:
-{"roe":null,"roa":null,"profitMargin":null,"evEbitda":null,"pegRatio":null,"debtToEquity":null,"netIncome":null,"da":null,"capex":null,"marketCap":null,"sharesOutstanding":null}
+  const urls = [
+    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=${fields}`,
+    `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=${fields}`,
+  ];
 
-Rules:
-- roe, roa, profitMargin: decimal form (e.g. 0.25 for 25%)
-- debtToEquity: percentage number (e.g. 45.2 for 45.2%)  
-- netIncome, da, capex, marketCap: raw USD number (e.g. 21300000000 for $21.3B)
-- sharesOutstanding: raw number
-- evEbitda, pegRatio: plain number
-- Use null for any missing value`;
-
-  let cd = {};
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(antKey() ? { 'x-api-key': antKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {})
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 800,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await resp.json();
-    const tb = data.content?.find(b => b.type === 'text');
-    if (tb?.text) {
-      console.log('Claude fund raw response:', tb.text.slice(0, 500));
-      const clean = tb.text.replace(/```[a-z]*/g,'').replace(/```/g,'').trim();
-      const jStart = clean.indexOf('{'), jEnd = clean.lastIndexOf('}');
-      if (jStart >= 0 && jEnd > jStart) {
-        const raw = JSON.parse(clean.slice(jStart, jEnd+1));
-        // Parse values that may come as strings like "21.3B", "$5,200M", "4.2%"
-        const parseNum = v => {
-          if (v == null || v === 'null' || v === 'N/A' || v === '—') return null;
-          if (typeof v === 'number') return v;
-          const s = String(v).replace(/[$,%\s,]/g, '').trim();
-          const m = s.match(/^(-?[\d.]+)\s*([BKMG]?)$/i);
-          if (!m) return null;
-          const n = parseFloat(m[1]);
-          const mul = {B:1e9,K:1e3,M:1e6,G:1e9}[m[2].toUpperCase()] || 1;
-          return n * mul;
-        };
-        cd = {
-          roe:             parseNum(raw.roe),
-          roa:             parseNum(raw.roa),
-          profitMargin:    parseNum(raw.profitMargin),
-          evEbitda:        parseNum(raw.evEbitda),
-          pegRatio:        parseNum(raw.pegRatio),
-          debtToEquity:    parseNum(raw.debtToEquity),
-          netIncome:       parseNum(raw.netIncome),
-          da:              parseNum(raw.da),
-          capex:           parseNum(raw.capex),
-          marketCap:       parseNum(raw.marketCap),
-          sharesOutstanding: parseNum(raw.sharesOutstanding)
-        };
-        console.log('Claude fund parsed:', cd);
-      }
-    }
-  } catch(e) {
-    if (!antKey()) {
-      console.warn('Claude fund: nessuna API key Anthropic. Apri ⚙ e inserisci la chiave.');
-    } else {
-      console.warn('Claude fund:', e.message);
-    }
+  let q = null;
+  for (const url of urls) {
+    const j = await tryFetch(url);
+    const r = j?.quoteResponse?.result?.[0];
+    if (r && Object.keys(r).length > 5) { q = r; break; }
   }
 
-  // Calculate Owner's Earnings (Buffett formula): OE = Net Income + D&A - CapEx
-  const netIncome = cd.netIncome ?? null;
-  const da        = cd.da        ?? null;
-  const capex     = cd.capex     ?? null;
-  const oe        = (netIncome != null && da != null && capex != null)
-                    ? netIncome + da - capex
-                    : null;
+  // Also try v8/finance/chart which already works for prices — meta section has some stats
+  if (!q || q.marketCap == null) {
+    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
+    const j = await tryFetch(chartUrl);
+    const meta = j?.chart?.result?.[0]?.meta;
+    if (meta) q = q ? { ...meta, ...q } : meta;
+  }
 
-  const price   = basic.regularMarketPrice ?? null;
-  const mktCap  = cd.marketCap  ?? basic.marketCap ?? null;
+  if (!q) {
+    console.warn(`[Fund ${ticker}] Tutti i proxy falliti`);
+    throw new Error('Dati non disponibili per ' + ticker);
+  }
+
+  // Extract values — v7 returns flat fields directly
+  const g = k => q[k] ?? null;
+
+  const roe     = g('returnOnEquity');
+  const roa     = g('returnOnAssets');
+  const margin  = g('profitMargins');
+  const fwdPE   = g('forwardPE');
+  const evEb    = g('enterpriseToEbitda');
+  const peg     = g('pegRatio');
+  const ps      = g('priceToSalesTrailing12Months');
+  const de      = g('debtToEquity');
+  const beta    = g('beta');
+  const mktCap  = g('marketCap');
+  const shares  = g('sharesOutstanding');
+  const target  = g('targetMeanPrice');
+  const rec     = g('recommendationMean');
+  const ret1y   = g('fiftyTwoWeekChangePercent');
+  const price   = g('regularMarketPrice');
+  const fcf     = g('freeCashflow');
+  const ebitda  = g('ebitda');
+  const ev      = g('enterpriseValue');
+  const upside  = (target && price && price > 0) ? (target - price) / price : null;
+
+  // Owner's Earnings: OE = FCF (best proxy available without cashflow statements)
+  // FCF = Operating Cash Flow - CapEx (already computed by Yahoo)
+  // OE Yield = FCF / Market Cap
+  const oe      = fcf;   // FCF is the best available OE proxy via v7
   const oeYield = (oe != null && mktCap && mktCap > 0) ? oe / mktCap : null;
-  const target  = basic.targetMeanPrice ?? null;
-  const upside  = (target && price && price > 0) ? (target-price)/price : null;
+
+  // For display: try to get D&A and CapEx from operatingCashflow and FCF
+  // CapEx ≈ operatingCashflow - FCF (approximate)
+  const ocf   = g('operatingCashflow');
+  const capex = (ocf != null && fcf != null) ? Math.abs(ocf - fcf) : null;
+  const da    = null; // not available in v7
+
+  console.log(`[Fund ${ticker}]`, { roe, fwdPE, de, mktCap, fcf, oeYield, evEb, peg });
 
   return {
-    roe:      cd.roe           ?? null,
-    roa:      cd.roa           ?? null,
-    margin:   cd.profitMargin  ?? null,
-    fwdPE:    basic.forwardPE  ?? null,
-    evEbitda: cd.evEbitda      ?? null,
-    peg:      cd.pegRatio      ?? basic.pegRatio ?? null,
-    ps:       basic.priceToSalesTrailing12Months ?? null,
-    de:       cd.debtToEquity  ?? null,
-    netIncome, da, capex, oe,
-    mktCap, oeYield, price, target, upside,
-    rec:      basic.recommendationMean        ?? null,
-    ret1y:    basic.fiftyTwoWeekChangePercent ?? null,
-    beta:     basic.beta       ?? null,
-    shares:   cd.sharesOutstanding ?? null
+    roe, roa, margin, fwdPE, evEbitda: evEb, peg, ps, de, beta,
+    netIncome: null, da, capex, oe, fcf,
+    mktCap, oeYield, price, target, upside, rec, ret1y, shares
   };
 }
 
