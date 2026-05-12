@@ -214,7 +214,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* SETTINGS MODAL */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;backdrop-filter:blur(6px)}
 .modal-ov.on{display:flex;align-items:flex-end}
-.modal{background:var(--s1);border-top:1px solid var(--bd);border-radius:14px 14px 0 0;width:100%;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 20px);animation:sup .25s ease}
+.modal{background:var(--s1);border-top:1px solid var(--bd);border-radius:14px 14px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 20px);animation:sup .25s ease}
+.modal-title{font-family:var(--disp);font-weight:700;font-size:13px;color:#fff}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .modal-title{font-family:var(--disp);font-weight:700;font-size:14px;color:#fff}
 .modal-close{background:var(--s2);border:1px solid var(--bd);color:var(--mut);font-size:16px;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -359,10 +360,14 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 <div class="modal-ov" id="settingsOv" onclick="closeSettings(event)">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title">⚙ Impostazioni Supabase</div>
+      <div class="modal-title">⚙ Impostazioni</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-    <div class="set-lbl">Project URL</div>
+    <div class="set-lbl">Anthropic API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali)</span></div>
+    <input class="set-input" id="antKey" type="password" placeholder="sk-ant-..." autocomplete="off">
+    <button class="btn-connect" onclick="saveAntKey()" style="margin-bottom:14px">Salva chiave Anthropic</button>
+    <div class="set-divider"></div>
+    <div class="set-lbl">Supabase — Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
     <div class="set-lbl">Anon Key</div>
     <input class="set-input" id="sbKey" type="password" placeholder="eyJhbGci…" autocomplete="off">
@@ -395,6 +400,17 @@ function $id(id)      { return document.getElementById(id); }
 function fmt(n, d=2)  { return (n >= 0 ? '+' : '') + n.toFixed(d); }
 
 // ── SUPABASE SYNC ─────────────────────────────────────────────────────────
+const ANT_KEY_KEY = 'miq_ant_key';
+function antKey()   { return localStorage.getItem(ANT_KEY_KEY) || ''; }
+function saveAntKey() {
+  const k = $id('antKey').value.trim();
+  if (!k) return;
+  localStorage.setItem(ANT_KEY_KEY, k);
+  $id('antKey').value = '';
+  $id('setStatus').textContent = '✓ Chiave Anthropic salvata';
+  $id('setStatus').className = 'set-status ok';
+  setTimeout(() => { $id('setStatus').textContent=''; }, 2000);
+}
 const SB_URL_KEY = 'miq_sb_url';
 const SB_KEY_KEY = 'miq_sb_key';
 function sbUrl()   { return localStorage.getItem(SB_URL_KEY) || ''; }
@@ -473,6 +489,8 @@ async function syncFromSupabase() {
 }
 
 function openSettings() {
+  $id('antKey').value = '';
+  if (antKey()) $id('antKey').placeholder = 'sk-ant-... (già configurata)';
   $id('sbUrl').value = sbUrl();
   $id('sbKey').value = sbKey();
   const connected = sbReady();
@@ -1128,7 +1146,10 @@ Rules:
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(antKey() ? { 'x-api-key': antKey(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } : {})
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 800,
@@ -1171,7 +1192,13 @@ Rules:
         console.log('Claude fund parsed:', cd);
       }
     }
-  } catch(e) { console.warn('Claude fund:', e.message); }
+  } catch(e) {
+    if (!antKey()) {
+      console.warn('Claude fund: nessuna API key Anthropic. Apri ⚙ e inserisci la chiave.');
+    } else {
+      console.warn('Claude fund:', e.message);
+    }
+  }
 
   // Calculate Owner's Earnings (Buffett formula): OE = Net Income + D&A - CapEx
   const netIncome = cd.netIncome ?? null;
