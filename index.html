@@ -363,6 +363,11 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="modal-title">⚙ Impostazioni</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
+    <div class="set-lbl">Financial Modeling Prep — API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali)</span></div>
+    <input class="set-input" id="fmpKeyInput" type="password" placeholder="La tua chiave FMP..." autocomplete="off">
+    <button class="btn-connect" onclick="saveFmpKey()" style="margin-bottom:14px">Salva chiave FMP</button>
+    <a href="https://financialmodelingprep.com/developer/docs" target="_blank" style="font-size:9px;color:var(--blue);display:block;text-align:center;margin-bottom:14px">→ Ottieni chiave gratuita su financialmodelingprep.com</a>
+    <div class="set-divider"></div>
     <div class="set-lbl">Supabase — Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
     <div class="set-lbl">Anon Key</div>
@@ -396,16 +401,17 @@ function $id(id)      { return document.getElementById(id); }
 function fmt(n, d=2)  { return (n >= 0 ? '+' : '') + n.toFixed(d); }
 
 // ── SUPABASE SYNC ─────────────────────────────────────────────────────────
-const ANT_KEY_KEY = 'miq_ant_key';
-function antKey()   { return localStorage.getItem(ANT_KEY_KEY) || ''; }
-function saveAntKey() {
-  const k = $id('antKey').value.trim();
+const FMP_KEY_KEY = 'miq_fmp_key';
+function fmpKey() { return localStorage.getItem(FMP_KEY_KEY) || ''; }
+function saveFmpKey() {
+  const k = ($id('fmpKeyInput')?.value || '').trim();
   if (!k) return;
-  localStorage.setItem(ANT_KEY_KEY, k);
-  $id('antKey').value = '';
-  $id('setStatus').textContent = '✓ Chiave Anthropic salvata';
+  localStorage.setItem(FMP_KEY_KEY, k);
+  $id('fmpKeyInput').value = '';
+  $id('fmpKeyInput').placeholder = 'Chiave salvata ✓';
+  $id('setStatus').textContent = '✓ Chiave FMP salvata';
   $id('setStatus').className = 'set-status ok';
-  setTimeout(() => { $id('setStatus').textContent=''; }, 2000);
+  setTimeout(() => $id('setStatus').textContent='', 2000);
 }
 const SB_URL_KEY = 'miq_sb_url';
 const SB_KEY_KEY = 'miq_sb_key';
@@ -485,8 +491,7 @@ async function syncFromSupabase() {
 }
 
 function openSettings() {
-  $id('antKey').value = '';
-  if (antKey()) $id('antKey').placeholder = 'sk-ant-... (già configurata)';
+  if (fmpKey() && $id('fmpKeyInput')) $id('fmpKeyInput').placeholder = 'Chiave FMP configurata ✓';
   $id('sbUrl').value = sbUrl();
   $id('sbKey').value = sbKey();
   const connected = sbReady();
@@ -1106,108 +1111,96 @@ let fundamentals = JSON.parse(localStorage.getItem(FUND_KEY) || '{}');
 function saveFund() { localStorage.setItem(FUND_KEY, JSON.stringify(fundamentals)); }
 
 async function fetchFundamentals(ticker) {
-  // Use the same v8/finance/chart endpoint that already works for prices
-  // It contains summary profile data including some fundamentals
-  // Plus v7/finance/quote for key ratios
+  const key = fmpKey();
+  if (!key) throw new Error('Inserisci la chiave FMP nelle impostazioni (⚙)');
 
-  const proxies = [
-    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-  ];
+  // FMP supports CORS natively — no proxy needed
+  // Normalize ticker for FMP (RACE.MI → RACE.MI, AAPL → AAPL)
+  const sym = ticker.replace('.MI','.MI').replace('.PA','.PA')
+                    .replace('.DE','.DE').replace('.AS','.AS');
 
-  async function tryFetch(url) {
-    for (const pFn of proxies) {
+  async function fmpGet(path) {
+    const url = `https://financialmodelingprep.com/api/v3/${path}&apikey=${key}`;
+    try {
+      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!r.ok) throw new Error('FMP HTTP ' + r.status);
+      return await r.json();
+    } catch(e) { console.warn('FMP', path, e.message); return null; }
+  }
+
+  // Fetch in parallel: key-metrics, ratios, income, cashflow
+  const [km, ratios, income, cashflow] = await Promise.all([
+    fmpGet(`key-metrics/${sym}?limit=1`),
+    fmpGet(`ratios/${sym}?limit=1`),
+    fmpGet(`income-statement/${sym}?limit=1`),
+    fmpGet(`cash-flow-statement/${sym}?limit=1`),
+  ]);
+
+  const k = km?.[0]       || {};
+  const ra = ratios?.[0]  || {};
+  const inc = income?.[0] || {};
+  const cf = cashflow?.[0]|| {};
+
+  const g = (obj, ...keys) => {
+    for (const key of keys) { if (obj[key] != null) return obj[key]; }
+    return null;
+  };
+
+  // OE components (Buffett formula: Net Income + D&A - CapEx)
+  const netIncome = g(inc, 'netIncome');
+  const da        = g(cf,  'depreciationAndAmortization');
+  const capex     = cf.capitalExpenditure != null ? Math.abs(cf.capitalExpenditure) : null;
+  const oe        = (netIncome != null && da != null && capex != null)
+                    ? netIncome + da - capex : null;
+  const fcf       = g(cf, 'freeCashFlow');
+  const mktCap    = g(k,  'marketCap');
+  const oeYield   = (oe != null && mktCap && mktCap > 0)
+                    ? oe / mktCap
+                    : (fcf != null && mktCap && mktCap > 0 ? fcf / mktCap : null);
+
+  // Analyst data via Yahoo v7 as fallback (still try)
+  let target = null, rec = null, ret1y = null, price = null;
+  try {
+    const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=targetMeanPrice,recommendationMean,fiftyTwoWeekChangePercent,regularMarketPrice`;
+    for (const pFn of [
+      u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+      u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    ]) {
       try {
-        const r = await fetch(pFn(url), { signal: AbortSignal.timeout(12000) });
-        if (!r.ok) continue;
+        const r = await fetch(pFn(yUrl), { signal: AbortSignal.timeout(8000) });
         const raw = await r.json();
-        const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
-        return typeof txt === 'string' ? JSON.parse(txt) : raw;
+        const txt = raw.contents ?? JSON.stringify(raw);
+        const j = typeof txt === 'string' ? JSON.parse(txt) : raw;
+        const q = j?.quoteResponse?.result?.[0];
+        if (q) {
+          target = q.targetMeanPrice ?? null;
+          rec    = q.recommendationMean ?? null;
+          ret1y  = q.fiftyTwoWeekChangePercent ?? null;
+          price  = q.regularMarketPrice ?? null;
+          break;
+        }
       } catch(e) {}
     }
-    return null;
-  }
+  } catch(e) {}
 
-  // v7/finance/quote with fundamental fields — flat structure, works well via proxy
-  const fields = [
-    'trailingPE','forwardPE','priceToBook','priceToSalesTrailing12Months',
-    'pegRatio','beta','marketCap','sharesOutstanding',
-    'returnOnEquity','returnOnAssets','profitMargins','grossMargins','operatingMargins',
-    'debtToEquity','currentRatio','quickRatio',
-    'totalCash','totalDebt','freeCashflow','operatingCashflow',
-    'ebitda','enterpriseValue','enterpriseToEbitda',
-    'earningsGrowth','revenueGrowth','totalRevenue',
-    'targetMeanPrice','recommendationMean',
-    'fiftyTwoWeekChangePercent','regularMarketPrice'
-  ].join(',');
+  const upside = (target && price && price > 0) ? (target - price) / price : null;
 
-  const urls = [
-    `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=${fields}`,
-    `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=${fields}`,
-  ];
-
-  let q = null;
-  for (const url of urls) {
-    const j = await tryFetch(url);
-    const r = j?.quoteResponse?.result?.[0];
-    if (r && Object.keys(r).length > 5) { q = r; break; }
-  }
-
-  // Also try v8/finance/chart which already works for prices — meta section has some stats
-  if (!q || q.marketCap == null) {
-    const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
-    const j = await tryFetch(chartUrl);
-    const meta = j?.chart?.result?.[0]?.meta;
-    if (meta) q = q ? { ...meta, ...q } : meta;
-  }
-
-  if (!q) {
-    console.warn(`[Fund ${ticker}] Tutti i proxy falliti`);
-    throw new Error('Dati non disponibili per ' + ticker);
-  }
-
-  // Extract values — v7 returns flat fields directly
-  const g = k => q[k] ?? null;
-
-  const roe     = g('returnOnEquity');
-  const roa     = g('returnOnAssets');
-  const margin  = g('profitMargins');
-  const fwdPE   = g('forwardPE');
-  const evEb    = g('enterpriseToEbitda');
-  const peg     = g('pegRatio');
-  const ps      = g('priceToSalesTrailing12Months');
-  const de      = g('debtToEquity');
-  const beta    = g('beta');
-  const mktCap  = g('marketCap');
-  const shares  = g('sharesOutstanding');
-  const target  = g('targetMeanPrice');
-  const rec     = g('recommendationMean');
-  const ret1y   = g('fiftyTwoWeekChangePercent');
-  const price   = g('regularMarketPrice');
-  const fcf     = g('freeCashflow');
-  const ebitda  = g('ebitda');
-  const ev      = g('enterpriseValue');
-  const upside  = (target && price && price > 0) ? (target - price) / price : null;
-
-  // Owner's Earnings: OE = FCF (best proxy available without cashflow statements)
-  // FCF = Operating Cash Flow - CapEx (already computed by Yahoo)
-  // OE Yield = FCF / Market Cap
-  const oe      = fcf;   // FCF is the best available OE proxy via v7
-  const oeYield = (oe != null && mktCap && mktCap > 0) ? oe / mktCap : null;
-
-  // For display: try to get D&A and CapEx from operatingCashflow and FCF
-  // CapEx ≈ operatingCashflow - FCF (approximate)
-  const ocf   = g('operatingCashflow');
-  const capex = (ocf != null && fcf != null) ? Math.abs(ocf - fcf) : null;
-  const da    = null; // not available in v7
-
-  console.log(`[Fund ${ticker}]`, { roe, fwdPE, de, mktCap, fcf, oeYield, evEb, peg });
+  console.log(`[Fund ${ticker}]`, { netIncome, da, capex, oe, oeYield, mktCap,
+    roe: g(ra,'returnOnEquity'), fwdPE: g(ra,'priceEarningsRatio'), de: g(ra,'debtEquityRatio') });
 
   return {
-    roe, roa, margin, fwdPE, evEbitda: evEb, peg, ps, de, beta,
-    netIncome: null, da, capex, oe, fcf,
-    mktCap, oeYield, price, target, upside, rec, ret1y, shares
+    roe:      g(ra, 'returnOnEquity'),
+    roa:      g(ra, 'returnOnAssets'),
+    margin:   g(ra, 'netProfitMargin'),
+    fwdPE:    g(ra, 'priceEarningsRatio') ?? g(k, 'peRatio'),
+    evEbitda: g(k,  'evToEbitda') ?? g(ra, 'evToEbitda'),
+    peg:      g(ra, 'priceEarningsToGrowthRatio') ?? g(k, 'pegRatio'),
+    ps:       g(ra, 'priceToSalesRatio') ?? g(k, 'priceToSalesRatio'),
+    de:       g(ra, 'debtEquityRatio'),
+    beta:     g(k,  'beta'),
+    netIncome, da, capex, oe, fcf, mktCap, oeYield,
+    price, target, upside, rec, ret1y,
+    shares: g(k, 'sharesOutstanding') ?? g(inc, 'weightedAverageShsOut')
   };
 }
 
