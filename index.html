@@ -63,7 +63,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* ── TABLE: always grid, horizontal scroll on small screens ── */
 .tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
 .tbl-inner{min-width:1080px}
-:root{--tbl-cols: 80px 100px 46px 46px 56px 92px 40px 50px 64px 44px 46px 44px 36px 36px 36px 36px 36px 36px 40px}
+:root{--tbl-cols: 80px 110px 46px 46px 58px 92px 40px 52px 66px 44px 40px}
 .tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
 .tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
@@ -287,7 +287,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <span class="wl-count">Watchlist: <b id="wlC">0</b> titoli</span>
       <div style="display:flex;gap:6px;align-items:center">
         <button class="btn-ref" id="btnRef" onclick="refreshAll()"><span class="si">↻</span> Aggiorna</button>
-        <button class="btn-ref" id="btnFund" onclick="refreshAllFundamentals()" style="color:var(--neu);border-color:rgba(255,176,32,.3)">$ Fondamentali</button>
         <button class="btn-reset" onclick="resetAll()" title="Cancella tutti i dati">🗑</button>
       </div>
     </div>
@@ -303,7 +302,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <button class="sb" id="sb-ticker" onclick="setSort('ticker')">A–Z</button>
       <button class="sb" id="sb-rsi" onclick="setSort('rsi')">RSI</button>
       <button class="sb" id="sb-roc" onclick="setSort('roc')">ROC 1M</button>
-      <button class="sb" id="sb-fscore" onclick="setSort('fscore')" style="color:var(--neu)">F.Score ↓</button>
     </div>
     <div id="wlTable"></div>
     <div class="last-upd" id="lastUpd" style="display:none">Aggiornato: <b id="updTime"></b></div>
@@ -363,10 +361,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="modal-title">⚙ Impostazioni</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-    <div class="set-lbl">Alpha Vantage API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali · 25 chiamate/giorno gratis)</span></div>
-    <input class="set-input" id="avFundInput" type="password" placeholder="La tua chiave Alpha Vantage..." autocomplete="off">
-    <button class="btn-connect" onclick="saveAvFundKey()" style="margin-bottom:10px">Salva chiave Alpha Vantage</button>
-    <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style="font-size:9px;color:var(--blue);display:block;text-align:center;margin-bottom:14px">→ Ottieni chiave gratuita su alphavantage.co</a>
     <div class="set-divider"></div>
     <div class="set-lbl">Supabase — Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -401,18 +395,6 @@ function $id(id)      { return document.getElementById(id); }
 function fmt(n, d=2)  { return (n >= 0 ? '+' : '') + n.toFixed(d); }
 
 // ── SUPABASE SYNC ─────────────────────────────────────────────────────────
-const AV_FUND_KEY = 'miq_av_fund';
-function avFundKey() { return localStorage.getItem(AV_FUND_KEY) || ''; }
-function saveAvFundKey() {
-  const k = ($id('avFundInput')?.value || '').trim();
-  if (!k) return;
-  localStorage.setItem(AV_FUND_KEY, k);
-  $id('avFundInput').value = '';
-  $id('avFundInput').placeholder = 'Chiave salvata ✓';
-  $id('setStatus').textContent = '✓ Chiave Alpha Vantage salvata';
-  $id('setStatus').className = 'set-status ok';
-  setTimeout(() => $id('setStatus').textContent='', 2000);
-}
 const SB_URL_KEY = 'miq_sb_url';
 const SB_KEY_KEY = 'miq_sb_key';
 function sbUrl()   { return localStorage.getItem(SB_URL_KEY) || ''; }
@@ -479,7 +461,7 @@ async function syncFromSupabase() {
   if (!sbReady()) return;
   setSyncDot('busy');
   try {
-    const [wl, cb, fundData] = await Promise.all([sbGet('watchlist'), sbGet('customBtns'), sbGet('fundamentals')]);
+    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
     if (wl && Array.isArray(wl)) { watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl)); }
     if (cb && typeof cb === 'object') {
       customBtns = { us: cb.us||[], it: cb.it||[] };
@@ -491,7 +473,6 @@ async function syncFromSupabase() {
 }
 
 function openSettings() {
-  if ($id('avFundInput')) { $id('avFundInput').value=''; if(avFundKey()) $id('avFundInput').placeholder='Chiave AV configurata ✓'; }
   $id('sbUrl').value = sbUrl();
   $id('sbKey').value = sbKey();
   const connected = sbReady();
@@ -526,7 +507,7 @@ async function connectSupabase() {
     $id('setStatus').textContent = 'Connesso! Sincronizzazione…';
     $id('setStatus').className = 'set-status ok';
     // Pull cloud data first
-    const [wl, cb, fundData] = await Promise.all([sbGet('watchlist'), sbGet('customBtns'), sbGet('fundamentals')]);
+    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
     if (wl && Array.isArray(wl) && wl.length > 0) {
       watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl));
       if (cb) { customBtns={us:cb.us||[],it:cb.it||[]}; localStorage.setItem(CUST_KEY, JSON.stringify(customBtns)); }
@@ -971,7 +952,7 @@ function updateQBtns() {
 
 function setSort(m) {
   sortMode = m;
-  ['score','call','put','ticker','rsi','roc','fscore'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
+  ['score','call','put','ticker','rsi','roc',].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
   renderTable();
 }
 
@@ -984,7 +965,6 @@ function sortedWL() {
     if (sortMode==='put')    return (sb?.putScore??-1)-(sa?.putScore??-1);
     if (sortMode==='rsi')    return (sb?.rsi??50)-(sa?.rsi??50);
     if (sortMode==='roc')    return (sb?.roc1m??0)-(sa?.roc1m??0);
-    if (sortMode==='fscore') return (fundamentals[b]?.score?.total??-1)-(fundamentals[a]?.score?.total??-1);
     return 0;
   });
 }
@@ -1043,37 +1023,10 @@ function buildRows(list) {
         + '<div class="td nr '+r1Cls+'">'+fmt(sc.roc1m,1)+'%</div>'
         + '<div class="td live">'+lpH+'</div>'
         + '<div class="td ctr '+mCls+'" style="font-size:13px">'+(sc.macd>sc.signal?'↑':'↓')+'</div>'
-        + (()=>{
-            const f = fundamentals[t];
-            const btnActs = '<div class="td act"><div class="act-wrap">'
-              + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()" title="Aggiorna prezzi">↻</button>'
-              + '<button class="ref-btn" onclick="refreshFundOne(\''+t+'\');event.stopPropagation()" style="color:var(--neu)" id="rf-'+t+'" title="Aggiorna fondamentali">$</button>'
-              + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
-              + '</div></div>';
-            if (!f) return '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td nr" style="color:var(--mut)">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
-              + btnActs;
-            if (f.error) return '<div class="td ctr" style="color:var(--put);font-size:8px;grid-column:span 8">err</div>'
-              + btnActs;
-            const fs = f.score;
-            const oeVal = fs.oeYield ?? (fs.oe != null && fs.raw?.mktCap ? fs.oe/fs.raw.mktCap : null);
-            const oeStr = oeVal != null ? (oeVal*100).toFixed(1)+'%' : '—';
-            return '<div class="td ctr" style="color:'+fscCol(fs.total,100)+'"><b>'+fs.total+'</b></div>'
-              + '<div class="td nr" style="padding-right:4px;color:'+fscCol(fs.sOE,20)+'">'+oeStr+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sQ,22)+'">'+fs.sQ+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sV,18)+'">'+fs.sV+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sS,15)+'">'+fs.sS+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sOE,20)+'">'+fs.sOE+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sM,15)+'">'+fs.sM+'</div>'
-              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sR,10)+'">'+fs.sR+'</div>'
-              + btnActs;
-          })()
+        + '<div class="td act"><div class="act-wrap">'
+        + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
+        + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
+        + '</div></div>'
         + '</div>';
     }
   });
@@ -1088,221 +1041,22 @@ function buildTHEAD() {
     + '<div class="th" style="justify-content:center;color:#FF4560">PUT</div>'
     + '<div class="th" style="justify-content:center">Spark</div>'
     + '<div class="th">Segnale</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:6px">RSI</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:6px">ROC 1M</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:6px">Prezzo</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">RSI</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">ROC 1M</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">Prezzo</div>'
     + '<div class="th" style="justify-content:center">MACD</div>'
-    + '<div class="th" style="justify-content:center;color:var(--neu)">F.Score</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:4px;color:var(--neu)">OE%</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Qual.</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Val.</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Sal.</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">OE</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Mom.</div>'
-    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Risc.</div>'
     + '<div class="th"></div>'
     + '</div>';
 }
 
 
 // ── FUNDAMENTALS ──────────────────────────────────────────────────────────
-const FUND_KEY = 'miq_fund_v1';
-let fundamentals = JSON.parse(localStorage.getItem(FUND_KEY) || '{}');
-function saveFund() { localStorage.setItem(FUND_KEY, JSON.stringify(fundamentals)); }
 
-async function fetchFundamentals(ticker) {
-  const key = avFundKey();
-  if (!key) throw new Error('Inserisci la chiave Alpha Vantage nelle impostazioni (⚙)');
 
-  // Alpha Vantage OVERVIEW — 1 call, returns all key ratios
-  // CASH_FLOW — 1 call, returns D&A and CapEx for Buffett OE formula
-  // Total: 2 calls/ticker, 25 calls/day free = ~12 tickers/day
-
-  const proxies = [
-    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-  ];
-
-  async function avFetch(func) {
-    const base = `https://www.alphavantage.co/query?function=${func}&symbol=${ticker}&apikey=${key}`;
-    for (const pFn of proxies) {
-      try {
-        const r = await fetch(pFn(base), { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) continue;
-        const raw = await r.json();
-        const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
-        const j   = typeof txt === 'string' ? JSON.parse(txt) : raw;
-        // AV returns {"Note":"..."} when rate limited, {"Information":"..."} for errors
-        if (j?.Note || j?.Information) throw new Error(j.Note || j.Information);
-        return j;
-      } catch(e) { console.warn('AV proxy', func, e.message); }
-    }
-    return null;
-  }
-
-  // Fetch OVERVIEW and CASH_FLOW in parallel
-  const [ov, cf] = await Promise.all([
-    avFetch('OVERVIEW'),
-    avFetch('CASH_FLOW'),
-  ]);
-
-  const n = (v) => {
-    if (v == null || v === 'None' || v === '-') return null;
-    const num = parseFloat(String(v).replace(/[,$%]/g, ''));
-    return isFinite(num) ? num : null;
-  };
-
-  // From OVERVIEW
-  const roe     = n(ov?.ReturnOnEquityTTM);
-  const roa     = n(ov?.ReturnOnAssetsTTM);
-  const margin  = n(ov?.ProfitMargin);
-  const fwdPE   = n(ov?.ForwardPE);
-  const evEb    = n(ov?.EVToEBITDA);
-  const peg     = n(ov?.PEGRatio);
-  const ps      = n(ov?.PriceToSalesRatioTTM);
-  const beta    = n(ov?.Beta);
-  const mktCap  = n(ov?.MarketCapitalization);
-  const target  = n(ov?.AnalystTargetPrice);
-  const price   = n(ov?.['52WeekHigh']) != null ? null : null; // not in OVERVIEW
-  const ret1y   = null; // not in OVERVIEW
-
-  // Debt/Equity: AV gives it as ratio (e.g. 1.5), convert to percentage for our scorer
-  const de = n(ov?.DebtToEquityRatioTTM) != null
-    ? n(ov?.DebtToEquityRatioTTM) * 100
-    : null;
-
-  // From CASH_FLOW (annual reports, most recent)
-  const annual = cf?.annualReports?.[0] || {};
-  const netIncome = n(annual.netIncome);
-  const da        = n(annual.depreciationDepletionAndAmortization);
-  const capexRaw  = n(annual.capitalExpenditures);
-  const capex     = capexRaw != null ? Math.abs(capexRaw) : null;
-  const ocf       = n(annual.operatingCashflow);
-  const fcf       = (ocf != null && capex != null) ? ocf - capex : null;
-
-  // OE = Net Income + D&A - CapEx (Buffett formula)
-  const oe = (netIncome != null && da != null && capex != null)
-             ? netIncome + da - capex : fcf;
-  const oeYield = (oe != null && mktCap && mktCap > 0) ? oe / mktCap : null;
-
-  // Analyst data from Yahoo v7 (supplemental, works via proxy)
-  let rec = null, ret1yVal = null, priceVal = null, upside = null;
-  try {
-    const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=targetMeanPrice,recommendationMean,fiftyTwoWeekChangePercent,regularMarketPrice`;
-    for (const pFn of proxies) {
-      try {
-        const r   = await fetch(pFn(yUrl), { signal: AbortSignal.timeout(8000) });
-        const raw = await r.json();
-        const txt = raw.contents ?? JSON.stringify(raw);
-        const q   = (typeof txt === 'string' ? JSON.parse(txt) : raw)?.quoteResponse?.result?.[0];
-        if (q) {
-          rec       = q.recommendationMean ?? null;
-          ret1yVal  = q.fiftyTwoWeekChangePercent ?? null;
-          priceVal  = q.regularMarketPrice ?? null;
-          if (target && priceVal) upside = (target - priceVal) / priceVal;
-          break;
-        }
-      } catch(e) {}
-    }
-  } catch(e) {}
-
-  console.log(`[Fund ${ticker}]`, { netIncome, da, capex, oe, oeYield, mktCap, roe, fwdPE, de, evEb });
-
-  return {
-    roe, roa, margin, fwdPE, evEbitda: evEb, peg, ps, de, beta,
-    netIncome, da, capex, oe, fcf, mktCap, oeYield,
-    price: priceVal, target, upside, rec, ret1y: ret1yVal,
-    shares: n(ov?.SharesOutstanding)
-  };
-}
-
-function scoreFundamentals(d) {
-  if (!d) return null;
-  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
-  const lerp  = (v, lo, hi, pts) => clamp((v - lo) / (hi - lo) * pts, 0, pts);
-
-  // ── Qualità 22pt ──────────────────────────────────────────────────────
-  const qRoe  = d.roe  != null ? lerp(d.roe,  0, 0.30, 8)  : 4;
-  const qRoa  = d.roa  != null ? lerp(d.roa,  0, 0.15, 7)  : 3.5;
-  const qMar  = d.margin != null ? lerp(d.margin, 0, 0.25, 7) : 3.5;
-  const sQ = qRoe + qRoa + qMar;
-
-  // ── Valutazione 18pt (lower multiple = better) ────────────────────────
-  const vPE   = d.fwdPE    != null ? lerp(40 - clamp(d.fwdPE, 5, 40), 0, 35, 5)  : 2.5;
-  const vEv   = d.evEbitda != null ? lerp(30 - clamp(d.evEbitda, 3, 30), 0, 27, 5) : 2.5;
-  const vPeg  = d.peg      != null ? lerp(3  - clamp(d.peg, 0, 3), 0, 3, 4)     : 2;
-  const vPs   = d.ps       != null ? lerp(10 - clamp(d.ps,  0.5, 10), 0, 9.5, 4) : 2;
-  const sV = vPE + vEv + vPeg + vPs;
-
-  // ── Salute 15pt ───────────────────────────────────────────────────────
-  const hDe  = d.de  != null ? lerp(200 - clamp(d.de, 0, 200), 0, 200, 10) : 5;
-  const hFcf = d.fcf != null ? (d.fcf > 0 ? 5 : 0) : 2.5;
-  const sS = hDe + hFcf;
-
-  // ── OE Yield 20pt ─────────────────────────────────────────────────────
-  const sOE = d.oeYield != null ? lerp(d.oeYield, 0, 0.08, 20) : (d.oe != null && d.mktCap ? lerp(d.oe/d.mktCap, 0, 0.08, 20) : 0);
-
-  // ── Momentum & Analisti 15pt ──────────────────────────────────────────
-  const mRet = d.ret1y   != null ? lerp(d.ret1y + 0.3, 0, 0.6, 5)        : 2.5;
-  const mUp  = d.upside  != null ? lerp(d.upside + 0.1, 0, 0.4, 5)       : 2.5;
-  const mRec = d.rec     != null ? lerp(5 - clamp(d.rec, 1, 5), 0, 4, 5) : 2.5;
-  const sM = mRet + mUp + mRec;
-
-  // ── Rischio 10pt (low beta = safer = more points) ─────────────────────
-  const sR = d.beta != null ? lerp(3 - clamp(d.beta, 0, 3), 0, 3, 10) : 5;
-
-  const total = sQ + sV + sS + sOE + sM + sR;
-  return {
-    total: Math.round(total * 10) / 10,
-    sQ: Math.round(sQ * 10) / 10,
-    sV: Math.round(sV * 10) / 10,
-    sS: Math.round(sS * 10) / 10,
-    sOE: Math.round(sOE * 10) / 10,
-    sM: Math.round(sM * 10) / 10,
-    sR: Math.round(sR * 10) / 10,
-    oeYield: d.oeYield,
-    oe: d.oe,
-    netIncome: d.netIncome,
-    da: d.da,
-    capex: d.capex,
-    raw: d
-  };
-}
 
 // Fund score color helper
-function fscCol(pts, max) {
-  const r = pts / max;
-  return r >= 0.7 ? 'var(--call)' : r >= 0.4 ? 'var(--neu)' : 'var(--put)';
-}
 
-async function refreshFundOne(t) {
-  const btn = $id('rf-'+t);
-  if (btn) { btn.textContent='…'; btn.disabled=true; }
-  try {
-    const d = await fetchFundamentals(t);
-    fundamentals[t] = { score: scoreFundamentals(d), ts: Date.now() };
-    saveFund();
-    if (sbReady()) sbSet('fundamentals', fundamentals);
-  } catch(e) {
-    console.error('Fund error for', t, e.message);
-    fundamentals[t] = { error: e.message };
-  }
-  if (btn) { btn.textContent='$'; btn.disabled=false; }
-  renderTable();
-}
 
-async function refreshAllFundamentals() {
-  if (!watchlist.length) return;
-  const btn = $id('btnFund');
-  if (btn) { btn.textContent='…'; btn.disabled=true; }
-  // Sequential to avoid rate limiting
-  for (const t of watchlist) {
-    await refreshFundOne(t);
-    await new Promise(r => setTimeout(r, 400));
-  }
-  if (btn) { btn.textContent='$ Fondamentali'; btn.disabled=false; }
-}
 
 function renderTable() {
   const list = sortedWL();
