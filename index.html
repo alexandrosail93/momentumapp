@@ -62,8 +62,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* TABLE */
 /* ── TABLE: always grid, horizontal scroll on small screens ── */
 .tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
-.tbl-inner{min-width:900px}
-:root{--tbl-cols: 80px 110px 46px 46px 58px 10px 96px 40px 52px 66px 52px 48px 48px 48px 40px}
+.tbl-inner{min-width:1080px}
+:root{--tbl-cols: 80px 100px 46px 46px 56px 92px 40px 50px 64px 44px 46px 44px 36px 36px 36px 36px 36px 36px 40px}
 .tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
 .tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
@@ -284,8 +284,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
     <div class="top-bar">
       <span class="wl-count">Watchlist: <b id="wlC">0</b> titoli</span>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;align-items:center">
         <button class="btn-ref" id="btnRef" onclick="refreshAll()"><span class="si">↻</span> Aggiorna</button>
+        <button class="btn-ref" id="btnFund" onclick="refreshAllFundamentals()" style="color:var(--neu);border-color:rgba(255,176,32,.3)">$ Fondamentali</button>
         <button class="btn-reset" onclick="resetAll()" title="Cancella tutti i dati">🗑</button>
       </div>
     </div>
@@ -301,6 +302,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <button class="sb" id="sb-ticker" onclick="setSort('ticker')">A–Z</button>
       <button class="sb" id="sb-rsi" onclick="setSort('rsi')">RSI</button>
       <button class="sb" id="sb-roc" onclick="setSort('roc')">ROC 1M</button>
+      <button class="sb" id="sb-fscore" onclick="setSort('fscore')" style="color:var(--neu)">F.Score ↓</button>
     </div>
     <div id="wlTable"></div>
     <div class="last-upd" id="lastUpd" style="display:none">Aggiornato: <b id="updTime"></b></div>
@@ -459,7 +461,7 @@ async function syncFromSupabase() {
   if (!sbReady()) return;
   setSyncDot('busy');
   try {
-    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
+    const [wl, cb, fundData] = await Promise.all([sbGet('watchlist'), sbGet('customBtns'), sbGet('fundamentals')]);
     if (wl && Array.isArray(wl)) { watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl)); }
     if (cb && typeof cb === 'object') {
       customBtns = { us: cb.us||[], it: cb.it||[] };
@@ -505,7 +507,7 @@ async function connectSupabase() {
     $id('setStatus').textContent = 'Connesso! Sincronizzazione…';
     $id('setStatus').className = 'set-status ok';
     // Pull cloud data first
-    const [wl, cb] = await Promise.all([sbGet('watchlist'), sbGet('customBtns')]);
+    const [wl, cb, fundData] = await Promise.all([sbGet('watchlist'), sbGet('customBtns'), sbGet('fundamentals')]);
     if (wl && Array.isArray(wl) && wl.length > 0) {
       watchlist = wl; localStorage.setItem(WL_KEY, JSON.stringify(wl));
       if (cb) { customBtns={us:cb.us||[],it:cb.it||[]}; localStorage.setItem(CUST_KEY, JSON.stringify(customBtns)); }
@@ -856,7 +858,9 @@ async function resolveTicker(input) {
   const yUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0`;
   const proxies = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(yUrl)}`
+    `https://corsproxy.io/?${encodeURIComponent(yUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yUrl)}`,
+    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(yUrl)}`
   ];
   for (const p of proxies) {
     try {
@@ -948,7 +952,7 @@ function updateQBtns() {
 
 function setSort(m) {
   sortMode = m;
-  ['score','call','put','ticker','rsi','roc'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
+  ['score','call','put','ticker','rsi','roc','fscore'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
   renderTable();
 }
 
@@ -961,6 +965,7 @@ function sortedWL() {
     if (sortMode==='put')    return (sb?.putScore??-1)-(sa?.putScore??-1);
     if (sortMode==='rsi')    return (sb?.rsi??50)-(sa?.rsi??50);
     if (sortMode==='roc')    return (sb?.roc1m??0)-(sa?.roc1m??0);
+    if (sortMode==='fscore') return (fundamentals[b]?.score?.total??-1)-(fundamentals[a]?.score?.total??-1);
     return 0;
   });
 }
@@ -1014,17 +1019,43 @@ function buildRows(list) {
         + '<div class="td sc" style="color:#00E5A0;justify-content:center">'+Math.round(sc.callScore??sc.total)+'</div>'
         + '<div class="td sc" style="color:#FF4560;justify-content:center">'+Math.round(sc.putScore??0)+'</div>'
         + '<div class="td spark">'+sparkline(sc.c30)+'</div>'
-        + '<div class="td ctr">'+trH+'</div>'
         + '<div class="td sig"><span class="sig-tag" style="background:'+s.bg+';color:'+s.c+';border:1px solid '+s.bd+'">'+s.lb+'</span></div>'
         + '<div class="td nr '+rsiCls+'">'+sc.rsi.toFixed(0)+'</div>'
         + '<div class="td nr '+r1Cls+'">'+fmt(sc.roc1m,1)+'%</div>'
         + '<div class="td live">'+lpH+'</div>'
-        + deskCells
         + '<div class="td ctr '+mCls+'" style="font-size:13px">'+(sc.macd>sc.signal?'↑':'↓')+'</div>'
-        + '<div class="td act"><div class="act-wrap">'
-        + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
-        + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
-        + '</div></div></div>';
+        + (()=>{
+            const f = fundamentals[t];
+            const btnActs = '<div class="td act"><div class="act-wrap">'
+              + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()" title="Aggiorna prezzi">↻</button>'
+              + '<button class="ref-btn" onclick="refreshFundOne(\''+t+'\');event.stopPropagation()" style="color:var(--neu)" id="rf-'+t+'" title="Aggiorna fondamentali">$</button>'
+              + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
+              + '</div></div>';
+            if (!f) return '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td nr" style="color:var(--mut)">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + '<div class="td ctr" style="color:var(--mut);font-size:9px">—</div>'
+              + btnActs;
+            if (f.error) return '<div class="td ctr" style="color:var(--put);font-size:8px;grid-column:span 8">err</div>'
+              + btnActs;
+            const fs = f.score;
+            const oeVal = fs.oeYield ?? (fs.oe != null && fs.raw?.mktCap ? fs.oe/fs.raw.mktCap : null);
+            const oeStr = oeVal != null ? (oeVal*100).toFixed(1)+'%' : '—';
+            return '<div class="td ctr" style="color:'+fscCol(fs.total,100)+'"><b>'+fs.total+'</b></div>'
+              + '<div class="td nr" style="padding-right:4px;color:'+fscCol(fs.sOE,20)+'">'+oeStr+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sQ,22)+'">'+fs.sQ+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sV,18)+'">'+fs.sV+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sS,15)+'">'+fs.sS+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sOE,20)+'">'+fs.sOE+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sM,15)+'">'+fs.sM+'</div>'
+              + '<div class="td ctr" style="font-size:9px;color:'+fscCol(fs.sR,10)+'">'+fs.sR+'</div>'
+              + btnActs;
+          })()
+        + '</div>';
     }
   });
   return h;
@@ -1037,17 +1068,228 @@ function buildTHEAD() {
     + '<div class="th" style="justify-content:center;color:#00E5A0">CALL</div>'
     + '<div class="th" style="justify-content:center;color:#FF4560">PUT</div>'
     + '<div class="th" style="justify-content:center">Spark</div>'
-    + '<div class="th"></div>'
     + '<div class="th">Segnale</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:7px">RSI</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:7px">ROC 1M</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:7px">Prezzo</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:7px">MA200%</div>'
-    + '<div class="th" style="justify-content:flex-end;padding-right:7px">BB %B</div>'
-    + '<div class="th" style="justify-content:center">Vol</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:6px">RSI</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:6px">ROC 1M</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:6px">Prezzo</div>'
     + '<div class="th" style="justify-content:center">MACD</div>'
+    + '<div class="th" style="justify-content:center;color:var(--neu)">F.Score</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:4px;color:var(--neu)">OE%</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Qual.</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Val.</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Sal.</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">OE</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Mom.</div>'
+    + '<div class="th" style="justify-content:center;font-size:8px;color:var(--neu)">Risc.</div>'
     + '<div class="th"></div>'
     + '</div>';
+}
+
+
+// ── FUNDAMENTALS ──────────────────────────────────────────────────────────
+const FUND_KEY = 'miq_fund_v1';
+let fundamentals = JSON.parse(localStorage.getItem(FUND_KEY) || '{}');
+function saveFund() { localStorage.setItem(FUND_KEY, JSON.stringify(fundamentals)); }
+
+async function fetchFundamentals(ticker) {
+  // Step 1: basic quote via proxy (fwdPE, beta, target, rec, mktCap, etc.)
+  const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}`;
+  let basic = {};
+  for (const proxyFn of [
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  ]) {
+    try {
+      const r   = await fetch(proxyFn(quoteUrl), { signal: AbortSignal.timeout(10000) });
+      const raw = await r.json();
+      const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
+      const j   = typeof txt === 'string' ? JSON.parse(txt) : raw;
+      const q   = j?.quoteResponse?.result?.[0];
+      if (q) { basic = q; break; }
+    } catch(e) {}
+  }
+
+  // Step 2: Claude API + web_search for fundamentals + OE components
+  const prompt = `Search Yahoo Finance or Macrotrends for the latest annual financial data for stock ticker "${ticker}".
+
+Return ONLY a raw JSON object, no markdown, no text outside the JSON:
+{"roe":null,"roa":null,"profitMargin":null,"evEbitda":null,"pegRatio":null,"debtToEquity":null,"netIncome":null,"da":null,"capex":null,"marketCap":null,"sharesOutstanding":null}
+
+Rules:
+- roe, roa, profitMargin: decimal form (e.g. 0.25 for 25%)
+- debtToEquity: percentage number (e.g. 45.2 for 45.2%)  
+- netIncome, da, capex, marketCap: raw USD number (e.g. 21300000000 for $21.3B)
+- sharesOutstanding: raw number
+- evEbitda, pegRatio: plain number
+- Use null for any missing value`;
+
+  let cd = {};
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 800,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await resp.json();
+    const tb = data.content?.find(b => b.type === 'text');
+    if (tb?.text) {
+      console.log('Claude fund raw response:', tb.text.slice(0, 500));
+      const clean = tb.text.replace(/```[a-z]*/g,'').replace(/```/g,'').trim();
+      const jStart = clean.indexOf('{'), jEnd = clean.lastIndexOf('}');
+      if (jStart >= 0 && jEnd > jStart) {
+        const raw = JSON.parse(clean.slice(jStart, jEnd+1));
+        // Parse values that may come as strings like "21.3B", "$5,200M", "4.2%"
+        const parseNum = v => {
+          if (v == null || v === 'null' || v === 'N/A' || v === '—') return null;
+          if (typeof v === 'number') return v;
+          const s = String(v).replace(/[$,%\s,]/g, '').trim();
+          const m = s.match(/^(-?[\d.]+)\s*([BKMG]?)$/i);
+          if (!m) return null;
+          const n = parseFloat(m[1]);
+          const mul = {B:1e9,K:1e3,M:1e6,G:1e9}[m[2].toUpperCase()] || 1;
+          return n * mul;
+        };
+        cd = {
+          roe:             parseNum(raw.roe),
+          roa:             parseNum(raw.roa),
+          profitMargin:    parseNum(raw.profitMargin),
+          evEbitda:        parseNum(raw.evEbitda),
+          pegRatio:        parseNum(raw.pegRatio),
+          debtToEquity:    parseNum(raw.debtToEquity),
+          netIncome:       parseNum(raw.netIncome),
+          da:              parseNum(raw.da),
+          capex:           parseNum(raw.capex),
+          marketCap:       parseNum(raw.marketCap),
+          sharesOutstanding: parseNum(raw.sharesOutstanding)
+        };
+        console.log('Claude fund parsed:', cd);
+      }
+    }
+  } catch(e) { console.warn('Claude fund:', e.message); }
+
+  // Calculate Owner's Earnings (Buffett formula): OE = Net Income + D&A - CapEx
+  const netIncome = cd.netIncome ?? null;
+  const da        = cd.da        ?? null;
+  const capex     = cd.capex     ?? null;
+  const oe        = (netIncome != null && da != null && capex != null)
+                    ? netIncome + da - capex
+                    : null;
+
+  const price   = basic.regularMarketPrice ?? null;
+  const mktCap  = cd.marketCap  ?? basic.marketCap ?? null;
+  const oeYield = (oe != null && mktCap && mktCap > 0) ? oe / mktCap : null;
+  const target  = basic.targetMeanPrice ?? null;
+  const upside  = (target && price && price > 0) ? (target-price)/price : null;
+
+  return {
+    roe:      cd.roe           ?? null,
+    roa:      cd.roa           ?? null,
+    margin:   cd.profitMargin  ?? null,
+    fwdPE:    basic.forwardPE  ?? null,
+    evEbitda: cd.evEbitda      ?? null,
+    peg:      cd.pegRatio      ?? basic.pegRatio ?? null,
+    ps:       basic.priceToSalesTrailing12Months ?? null,
+    de:       cd.debtToEquity  ?? null,
+    netIncome, da, capex, oe,
+    mktCap, oeYield, price, target, upside,
+    rec:      basic.recommendationMean        ?? null,
+    ret1y:    basic.fiftyTwoWeekChangePercent ?? null,
+    beta:     basic.beta       ?? null,
+    shares:   cd.sharesOutstanding ?? null
+  };
+}
+
+function scoreFundamentals(d) {
+  if (!d) return null;
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi);
+  const lerp  = (v, lo, hi, pts) => clamp((v - lo) / (hi - lo) * pts, 0, pts);
+
+  // ── Qualità 22pt ──────────────────────────────────────────────────────
+  const qRoe  = d.roe  != null ? lerp(d.roe,  0, 0.30, 8)  : 4;
+  const qRoa  = d.roa  != null ? lerp(d.roa,  0, 0.15, 7)  : 3.5;
+  const qMar  = d.margin != null ? lerp(d.margin, 0, 0.25, 7) : 3.5;
+  const sQ = qRoe + qRoa + qMar;
+
+  // ── Valutazione 18pt (lower multiple = better) ────────────────────────
+  const vPE   = d.fwdPE    != null ? lerp(40 - clamp(d.fwdPE, 5, 40), 0, 35, 5)  : 2.5;
+  const vEv   = d.evEbitda != null ? lerp(30 - clamp(d.evEbitda, 3, 30), 0, 27, 5) : 2.5;
+  const vPeg  = d.peg      != null ? lerp(3  - clamp(d.peg, 0, 3), 0, 3, 4)     : 2;
+  const vPs   = d.ps       != null ? lerp(10 - clamp(d.ps,  0.5, 10), 0, 9.5, 4) : 2;
+  const sV = vPE + vEv + vPeg + vPs;
+
+  // ── Salute 15pt ───────────────────────────────────────────────────────
+  const hDe  = d.de  != null ? lerp(200 - clamp(d.de, 0, 200), 0, 200, 10) : 5;
+  const hFcf = d.fcf != null ? (d.fcf > 0 ? 5 : 0) : 2.5;
+  const sS = hDe + hFcf;
+
+  // ── OE Yield 20pt ─────────────────────────────────────────────────────
+  const sOE = d.oeYield != null ? lerp(d.oeYield, 0, 0.08, 20) : (d.oe != null && d.mktCap ? lerp(d.oe/d.mktCap, 0, 0.08, 20) : 0);
+
+  // ── Momentum & Analisti 15pt ──────────────────────────────────────────
+  const mRet = d.ret1y   != null ? lerp(d.ret1y + 0.3, 0, 0.6, 5)        : 2.5;
+  const mUp  = d.upside  != null ? lerp(d.upside + 0.1, 0, 0.4, 5)       : 2.5;
+  const mRec = d.rec     != null ? lerp(5 - clamp(d.rec, 1, 5), 0, 4, 5) : 2.5;
+  const sM = mRet + mUp + mRec;
+
+  // ── Rischio 10pt (low beta = safer = more points) ─────────────────────
+  const sR = d.beta != null ? lerp(3 - clamp(d.beta, 0, 3), 0, 3, 10) : 5;
+
+  const total = sQ + sV + sS + sOE + sM + sR;
+  return {
+    total: Math.round(total * 10) / 10,
+    sQ: Math.round(sQ * 10) / 10,
+    sV: Math.round(sV * 10) / 10,
+    sS: Math.round(sS * 10) / 10,
+    sOE: Math.round(sOE * 10) / 10,
+    sM: Math.round(sM * 10) / 10,
+    sR: Math.round(sR * 10) / 10,
+    oeYield: d.oeYield,
+    oe: d.oe,
+    netIncome: d.netIncome,
+    da: d.da,
+    capex: d.capex,
+    raw: d
+  };
+}
+
+// Fund score color helper
+function fscCol(pts, max) {
+  const r = pts / max;
+  return r >= 0.7 ? 'var(--call)' : r >= 0.4 ? 'var(--neu)' : 'var(--put)';
+}
+
+async function refreshFundOne(t) {
+  const btn = $id('rf-'+t);
+  if (btn) { btn.textContent='…'; btn.disabled=true; }
+  try {
+    const d = await fetchFundamentals(t);
+    fundamentals[t] = { score: scoreFundamentals(d), ts: Date.now() };
+    saveFund();
+    if (sbReady()) sbSet('fundamentals', fundamentals);
+  } catch(e) {
+    console.error('Fund error for', t, e.message);
+    fundamentals[t] = { error: e.message };
+  }
+  if (btn) { btn.textContent='$'; btn.disabled=false; }
+  renderTable();
+}
+
+async function refreshAllFundamentals() {
+  if (!watchlist.length) return;
+  const btn = $id('btnFund');
+  if (btn) { btn.textContent='…'; btn.disabled=true; }
+  // Sequential to avoid rate limiting
+  for (const t of watchlist) {
+    await refreshFundOne(t);
+    await new Promise(r => setTimeout(r, 400));
+  }
+  if (btn) { btn.textContent='$ Fondamentali'; btn.disabled=false; }
 }
 
 function renderTable() {
