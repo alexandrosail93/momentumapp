@@ -363,10 +363,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <div class="modal-title">⚙ Impostazioni</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-    <div class="set-lbl">Financial Modeling Prep — API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali)</span></div>
-    <input class="set-input" id="fmpKeyInput" type="password" placeholder="La tua chiave FMP..." autocomplete="off">
-    <button class="btn-connect" onclick="saveFmpKey()" style="margin-bottom:14px">Salva chiave FMP</button>
-    <a href="https://financialmodelingprep.com/developer/docs" target="_blank" style="font-size:9px;color:var(--blue);display:block;text-align:center;margin-bottom:14px">→ Ottieni chiave gratuita su financialmodelingprep.com</a>
+    <div class="set-lbl">Alpha Vantage API Key <span style="font-size:8px;color:var(--mut)">(per fondamentali · 25 chiamate/giorno gratis)</span></div>
+    <input class="set-input" id="avFundInput" type="password" placeholder="La tua chiave Alpha Vantage..." autocomplete="off">
+    <button class="btn-connect" onclick="saveAvFundKey()" style="margin-bottom:10px">Salva chiave Alpha Vantage</button>
+    <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style="font-size:9px;color:var(--blue);display:block;text-align:center;margin-bottom:14px">→ Ottieni chiave gratuita su alphavantage.co</a>
     <div class="set-divider"></div>
     <div class="set-lbl">Supabase — Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
@@ -401,15 +401,15 @@ function $id(id)      { return document.getElementById(id); }
 function fmt(n, d=2)  { return (n >= 0 ? '+' : '') + n.toFixed(d); }
 
 // ── SUPABASE SYNC ─────────────────────────────────────────────────────────
-const FMP_KEY_KEY = 'miq_fmp_key';
-function fmpKey() { return localStorage.getItem(FMP_KEY_KEY) || ''; }
-function saveFmpKey() {
-  const k = ($id('fmpKeyInput')?.value || '').trim();
+const AV_FUND_KEY = 'miq_av_fund';
+function avFundKey() { return localStorage.getItem(AV_FUND_KEY) || ''; }
+function saveAvFundKey() {
+  const k = ($id('avFundInput')?.value || '').trim();
   if (!k) return;
-  localStorage.setItem(FMP_KEY_KEY, k);
-  $id('fmpKeyInput').value = '';
-  $id('fmpKeyInput').placeholder = 'Chiave salvata ✓';
-  $id('setStatus').textContent = '✓ Chiave FMP salvata';
+  localStorage.setItem(AV_FUND_KEY, k);
+  $id('avFundInput').value = '';
+  $id('avFundInput').placeholder = 'Chiave salvata ✓';
+  $id('setStatus').textContent = '✓ Chiave Alpha Vantage salvata';
   $id('setStatus').className = 'set-status ok';
   setTimeout(() => $id('setStatus').textContent='', 2000);
 }
@@ -491,7 +491,7 @@ async function syncFromSupabase() {
 }
 
 function openSettings() {
-  if (fmpKey() && $id('fmpKeyInput')) $id('fmpKeyInput').placeholder = 'Chiave FMP configurata ✓';
+  if ($id('avFundInput')) { $id('avFundInput').value=''; if(avFundKey()) $id('avFundInput').placeholder='Chiave AV configurata ✓'; }
   $id('sbUrl').value = sbUrl();
   $id('sbKey').value = sbKey();
   const connected = sbReady();
@@ -1111,96 +1111,109 @@ let fundamentals = JSON.parse(localStorage.getItem(FUND_KEY) || '{}');
 function saveFund() { localStorage.setItem(FUND_KEY, JSON.stringify(fundamentals)); }
 
 async function fetchFundamentals(ticker) {
-  const key = fmpKey();
-  if (!key) throw new Error('Inserisci la chiave FMP nelle impostazioni (⚙)');
+  const key = avFundKey();
+  if (!key) throw new Error('Inserisci la chiave Alpha Vantage nelle impostazioni (⚙)');
 
-  // FMP supports CORS natively — no proxy needed
-  // Normalize ticker for FMP (RACE.MI → RACE.MI, AAPL → AAPL)
-  const sym = ticker.replace('.MI','.MI').replace('.PA','.PA')
-                    .replace('.DE','.DE').replace('.AS','.AS');
+  // Alpha Vantage OVERVIEW — 1 call, returns all key ratios
+  // CASH_FLOW — 1 call, returns D&A and CapEx for Buffett OE formula
+  // Total: 2 calls/ticker, 25 calls/day free = ~12 tickers/day
 
-  async function fmpGet(path) {
-    const url = `https://financialmodelingprep.com/api/v3/${path}&apikey=${key}`;
-    try {
-      const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
-      if (!r.ok) throw new Error('FMP HTTP ' + r.status);
-      return await r.json();
-    } catch(e) { console.warn('FMP', path, e.message); return null; }
+  const proxies = [
+    u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  ];
+
+  async function avFetch(func) {
+    const base = `https://www.alphavantage.co/query?function=${func}&symbol=${ticker}&apikey=${key}`;
+    for (const pFn of proxies) {
+      try {
+        const r = await fetch(pFn(base), { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) continue;
+        const raw = await r.json();
+        const txt = raw.contents ?? (typeof raw === 'string' ? raw : JSON.stringify(raw));
+        const j   = typeof txt === 'string' ? JSON.parse(txt) : raw;
+        // AV returns {"Note":"..."} when rate limited, {"Information":"..."} for errors
+        if (j?.Note || j?.Information) throw new Error(j.Note || j.Information);
+        return j;
+      } catch(e) { console.warn('AV proxy', func, e.message); }
+    }
+    return null;
   }
 
-  // Fetch in parallel: key-metrics, ratios, income, cashflow
-  const [km, ratios, income, cashflow] = await Promise.all([
-    fmpGet(`key-metrics/${sym}?limit=1`),
-    fmpGet(`ratios/${sym}?limit=1`),
-    fmpGet(`income-statement/${sym}?limit=1`),
-    fmpGet(`cash-flow-statement/${sym}?limit=1`),
+  // Fetch OVERVIEW and CASH_FLOW in parallel
+  const [ov, cf] = await Promise.all([
+    avFetch('OVERVIEW'),
+    avFetch('CASH_FLOW'),
   ]);
 
-  const k = km?.[0]       || {};
-  const ra = ratios?.[0]  || {};
-  const inc = income?.[0] || {};
-  const cf = cashflow?.[0]|| {};
-
-  const g = (obj, ...keys) => {
-    for (const key of keys) { if (obj[key] != null) return obj[key]; }
-    return null;
+  const n = (v) => {
+    if (v == null || v === 'None' || v === '-') return null;
+    const num = parseFloat(String(v).replace(/[,$%]/g, ''));
+    return isFinite(num) ? num : null;
   };
 
-  // OE components (Buffett formula: Net Income + D&A - CapEx)
-  const netIncome = g(inc, 'netIncome');
-  const da        = g(cf,  'depreciationAndAmortization');
-  const capex     = cf.capitalExpenditure != null ? Math.abs(cf.capitalExpenditure) : null;
-  const oe        = (netIncome != null && da != null && capex != null)
-                    ? netIncome + da - capex : null;
-  const fcf       = g(cf, 'freeCashFlow');
-  const mktCap    = g(k,  'marketCap');
-  const oeYield   = (oe != null && mktCap && mktCap > 0)
-                    ? oe / mktCap
-                    : (fcf != null && mktCap && mktCap > 0 ? fcf / mktCap : null);
+  // From OVERVIEW
+  const roe     = n(ov?.ReturnOnEquityTTM);
+  const roa     = n(ov?.ReturnOnAssetsTTM);
+  const margin  = n(ov?.ProfitMargin);
+  const fwdPE   = n(ov?.ForwardPE);
+  const evEb    = n(ov?.EVToEBITDA);
+  const peg     = n(ov?.PEGRatio);
+  const ps      = n(ov?.PriceToSalesRatioTTM);
+  const beta    = n(ov?.Beta);
+  const mktCap  = n(ov?.MarketCapitalization);
+  const target  = n(ov?.AnalystTargetPrice);
+  const price   = n(ov?.['52WeekHigh']) != null ? null : null; // not in OVERVIEW
+  const ret1y   = null; // not in OVERVIEW
 
-  // Analyst data via Yahoo v7 as fallback (still try)
-  let target = null, rec = null, ret1y = null, price = null;
+  // Debt/Equity: AV gives it as ratio (e.g. 1.5), convert to percentage for our scorer
+  const de = n(ov?.DebtToEquityRatioTTM) != null
+    ? n(ov?.DebtToEquityRatioTTM) * 100
+    : null;
+
+  // From CASH_FLOW (annual reports, most recent)
+  const annual = cf?.annualReports?.[0] || {};
+  const netIncome = n(annual.netIncome);
+  const da        = n(annual.depreciationDepletionAndAmortization);
+  const capexRaw  = n(annual.capitalExpenditures);
+  const capex     = capexRaw != null ? Math.abs(capexRaw) : null;
+  const ocf       = n(annual.operatingCashflow);
+  const fcf       = (ocf != null && capex != null) ? ocf - capex : null;
+
+  // OE = Net Income + D&A - CapEx (Buffett formula)
+  const oe = (netIncome != null && da != null && capex != null)
+             ? netIncome + da - capex : fcf;
+  const oeYield = (oe != null && mktCap && mktCap > 0) ? oe / mktCap : null;
+
+  // Analyst data from Yahoo v7 (supplemental, works via proxy)
+  let rec = null, ret1yVal = null, priceVal = null, upside = null;
   try {
     const yUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${ticker}&fields=targetMeanPrice,recommendationMean,fiftyTwoWeekChangePercent,regularMarketPrice`;
-    for (const pFn of [
-      u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-      u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
-    ]) {
+    for (const pFn of proxies) {
       try {
-        const r = await fetch(pFn(yUrl), { signal: AbortSignal.timeout(8000) });
+        const r   = await fetch(pFn(yUrl), { signal: AbortSignal.timeout(8000) });
         const raw = await r.json();
         const txt = raw.contents ?? JSON.stringify(raw);
-        const j = typeof txt === 'string' ? JSON.parse(txt) : raw;
-        const q = j?.quoteResponse?.result?.[0];
+        const q   = (typeof txt === 'string' ? JSON.parse(txt) : raw)?.quoteResponse?.result?.[0];
         if (q) {
-          target = q.targetMeanPrice ?? null;
-          rec    = q.recommendationMean ?? null;
-          ret1y  = q.fiftyTwoWeekChangePercent ?? null;
-          price  = q.regularMarketPrice ?? null;
+          rec       = q.recommendationMean ?? null;
+          ret1yVal  = q.fiftyTwoWeekChangePercent ?? null;
+          priceVal  = q.regularMarketPrice ?? null;
+          if (target && priceVal) upside = (target - priceVal) / priceVal;
           break;
         }
       } catch(e) {}
     }
   } catch(e) {}
 
-  const upside = (target && price && price > 0) ? (target - price) / price : null;
-
-  console.log(`[Fund ${ticker}]`, { netIncome, da, capex, oe, oeYield, mktCap,
-    roe: g(ra,'returnOnEquity'), fwdPE: g(ra,'priceEarningsRatio'), de: g(ra,'debtEquityRatio') });
+  console.log(`[Fund ${ticker}]`, { netIncome, da, capex, oe, oeYield, mktCap, roe, fwdPE, de, evEb });
 
   return {
-    roe:      g(ra, 'returnOnEquity'),
-    roa:      g(ra, 'returnOnAssets'),
-    margin:   g(ra, 'netProfitMargin'),
-    fwdPE:    g(ra, 'priceEarningsRatio') ?? g(k, 'peRatio'),
-    evEbitda: g(k,  'evToEbitda') ?? g(ra, 'evToEbitda'),
-    peg:      g(ra, 'priceEarningsToGrowthRatio') ?? g(k, 'pegRatio'),
-    ps:       g(ra, 'priceToSalesRatio') ?? g(k, 'priceToSalesRatio'),
-    de:       g(ra, 'debtEquityRatio'),
-    beta:     g(k,  'beta'),
+    roe, roa, margin, fwdPE, evEbitda: evEb, peg, ps, de, beta,
     netIncome, da, capex, oe, fcf, mktCap, oeYield,
-    price, target, upside, rec, ret1y,
-    shares: g(k, 'sharesOutstanding') ?? g(inc, 'weightedAverageShsOut')
+    price: priceVal, target, upside, rec, ret1y: ret1yVal,
+    shares: n(ov?.SharesOutstanding)
   };
 }
 
