@@ -22,9 +22,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .logo-sub{font-size:8px;letter-spacing:.2em;color:var(--mut);margin-top:2px;text-transform:uppercase}
 .v-chip{font-size:8px;letter-spacing:.12em;color:var(--blue);background:rgba(58,143,255,.1);border:1px solid rgba(58,143,255,.2);padding:3px 8px;border-radius:2px}
 /* TABS */
-.tabs{display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:3px;gap:3px;margin-bottom:14px}
-.tab{flex:1;background:transparent;border:none;color:var(--mut);font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:8px;cursor:pointer;border-radius:4px;transition:all .2s;text-transform:uppercase}
-.tab.active{background:var(--blue);color:#fff;font-weight:500}
 /* ADD ROW */
 .add-row{display:flex;gap:7px;margin-bottom:10px}
 .add-row input{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:5px;color:#fff;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.08em;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none;text-transform:uppercase}
@@ -62,8 +59,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* TABLE */
 /* ── TABLE: always grid, horizontal scroll on small screens ── */
 .tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
-.tbl-inner{min-width:1080px}
-:root{--tbl-cols: 80px 110px 46px 46px 58px 92px 40px 52px 66px 44px 40px}
+.tbl-inner{min-width:590px}
+:root{--tbl-cols: 72px 95px 44px 44px 54px 86px 38px 48px 62px 40px 36px}
 .tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
 .tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
@@ -120,8 +117,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .last-upd{font-size:8px;color:var(--mut);text-align:right;margin-top:5px}
 .last-upd b{color:var(--txt)}
 /* SEARCH TAB */
-.s-card{background:var(--s1);border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:14px}
-.s-row{display:flex;gap:7px}
 .fw{flex:1}
 .fw input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:5px;color:#fff;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.08em;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none;text-transform:uppercase}
 .fw input:focus{border-color:var(--blue)}
@@ -129,9 +124,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .btn-srch{background:var(--blue);color:#fff;font-family:var(--disp);font-weight:700;font-size:10px;border:none;border-radius:5px;padding:0 16px;cursor:pointer;white-space:nowrap;min-width:86px}
 .btn-srch:active{background:var(--blue2)}
 .btn-srch:disabled{opacity:.4}
-.qcs{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
-.qc{font-size:9px;color:var(--mut);background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:4px 9px;cursor:pointer;font-family:var(--mono)}
-.qc:active{color:#fff;border-color:var(--blue)}
 .snote{margin-top:9px;font-size:8px;color:var(--mut);text-align:center;line-height:1.7}
 .snote b{color:var(--call)}
 .sbar{display:none;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:10px;color:var(--mut)}
@@ -139,23 +131,13 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sbar.err{color:var(--put);background:rgba(255,69,96,.06);border-color:rgba(255,69,96,.2)}
 .spinner{width:13px;height:13px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 .sbar.err .spinner{display:none}
-#sRes{display:none}
-#sRes.on{display:block;animation:fu .35s ease}
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.res-box{background:var(--s1);border:1px solid var(--bd);border-radius:8px;overflow:hidden;margin-bottom:12px;position:relative}
 .res-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--hc,var(--blue))}
 .res-main{display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 10px 16px}
-.r-tkr{font-family:var(--disp);font-weight:900;font-size:18px;color:#fff}
-.r-name{font-size:9px;color:var(--mut);margin-top:2px;margin-bottom:8px}
 .res-score{font-family:var(--disp);font-weight:900;font-size:32px;color:#fff;line-height:1;text-align:right}
 .res-score small{font-size:12px;color:var(--mut);font-weight:400}
 .res-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bd);border-top:1px solid var(--bd)}
-.rm{background:var(--s2);padding:8px 10px}
-.rm-l{font-size:7px;letter-spacing:.12em;color:var(--mut);text-transform:uppercase;margin-bottom:3px}
-.rm-v{font-size:11px;font-weight:500;color:#fff}
 .bk-section{padding:14px 14px 10px;border-top:1px solid var(--bd)}
-.add-wl-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;background:transparent;border:none;border-top:1px solid var(--bd);color:var(--blue);font-family:var(--disp);font-weight:700;font-size:10px;padding:11px;cursor:pointer}
-.add-wl-btn.added{color:var(--call);border-top-color:rgba(0,229,160,.2)}
 /* DETAIL SHEET */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;backdrop-filter:blur(6px)}
 .overlay.on{display:flex;align-items:flex-end}
@@ -261,13 +243,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <button class="btn-gear" onclick="openSettings()" title="Impostazioni Supabase">⚙</button>
     </div>
   </header>
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('wl')">📋 Watchlist</button>
-    <button class="tab" onclick="switchTab('s')">🔍 Analisi</button>
-  </div>
 
   <!-- WATCHLIST TAB -->
-  <div id="tabWL">
+  
     <div class="add-row">
       <input type="text" id="addT" placeholder="Ticker o nome (es. Apple, ENI)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" maxlength="12">
       <button class="btn-add" id="btnAdd" onclick="addTicker()">+ ADD</button>
@@ -307,38 +285,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="last-upd" id="lastUpd" style="display:none">Aggiornato: <b id="updTime"></b></div>
   </div>
 
-  <!-- SEARCH TAB -->
-  <div id="tabS" style="display:none">
-    <div class="s-card">
-      <div class="s-row">
-        <div class="fw"><input type="text" id="sT" placeholder="Ticker o nome (es. Apple, Ferrari)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" maxlength="12"></div>
-        <button class="btn-srch" id="btnSrch" onclick="analyze()">ANALIZZA</button>
-      </div>
-      <div class="snote">Dati da <b>Yahoo Finance</b> · Suffissi EU: .MI .PA .DE .AS .L</div>
-    </div>
-    <div class="sbar" id="sb2"><div class="spinner"></div><span id="sm2">Caricamento…</span></div>
-    <div id="sRes">
-      <div class="res-box" id="resBox">
-        <div class="res-main">
-          <div>
-            <div class="r-tkr" id="rT">–</div>
-            <div class="r-name" id="rN">–</div>
-            <div id="rSig" style="display:inline-block;border-radius:3px;padding:3px 10px;font-family:var(--disp);font-weight:700;font-size:9px;letter-spacing:.07em">–</div>
-          </div>
-          <div class="res-score" id="rScore">–<small>/100</small></div>
-        </div>
-        <div class="res-metrics">
-          <div class="rm"><div class="rm-l">RSI 14</div><div class="rm-v" id="mRsi">–</div></div>
-          <div class="rm"><div class="rm-l">ROC 1M</div><div class="rm-v" id="mRoc">–</div></div>
-          <div class="rm"><div class="rm-l">BB %B</div><div class="rm-v" id="mMa">–</div></div>
-          <div class="rm"><div class="rm-l">MACD</div><div class="rm-v" id="mMacd">–</div></div>
-        </div>
-        <div class="bk-section" id="bkRows"></div>
-        <button class="add-wl-btn" id="addWlBtn" onclick="addCurrent()">＋ Aggiungi alla Watchlist</button>
-      </div>
-      <div class="disc">⚠ Solo a scopo educativo. Non costituisce consulenza finanziaria.</div>
-    </div>
-  </div>
+  
 </div>
 
 <!-- DETAIL OVERLAY -->
@@ -351,8 +298,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div id="dScoreRow"></div>
     <div id="dContent"></div>
-  </div>
-</div>
 
 <!-- SETTINGS MODAL -->
 <div class="modal-ov" id="settingsOv" onclick="closeSettings(event)">
@@ -387,7 +332,6 @@ let scores    = {};
 let alerts    = JSON.parse(localStorage.getItem(ALERT_KEY) || '{}');
 let sortMode  = 'score';
 let collapsed = new Set();
-let lastRes   = null;
 
 function saveWL()     { localStorage.setItem(WL_KEY,    JSON.stringify(watchlist)); syncToSupabase(); }
 function saveAlerts() { localStorage.setItem(ALERT_KEY, JSON.stringify(alerts));    }
@@ -608,10 +552,10 @@ async function fetchY(t) {
   const base = 'https://query1.finance.yahoo.com/v8/finance/chart/' + t + '?interval=1d&range=1y';
   const base2 = 'https://query2.finance.yahoo.com/v8/finance/chart/' + t + '?interval=1d&range=1y';
   const proxies = [
-    u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
     u => 'https://corsproxy.io/?' + encodeURIComponent(u),
     u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-    u => 'https://thingproxy.freeboard.io/fetch/' + encodeURIComponent(u),
+    u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
+    u => 'https://proxy.cors.sh/' + u,
   ];
   let lastErr = new Error('Tutti i proxy falliti');
   for (const yUrl of [base, base2]) {
@@ -830,11 +774,7 @@ function histChart(t) {
 }
 
 // ── TABS ──────────────────────────────────────────────────────────────────
-function switchTab(t) {
-  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',['wl','s'][i]===t));
-  $id('tabWL').style.display = t==='wl'?'block':'none';
-  $id('tabS').style.display  = t==='s' ?'block':'none';
-}
+
 
 // ── WATCHLIST ─────────────────────────────────────────────────────────────
 function addTicker() {
@@ -857,10 +797,10 @@ async function resolveTicker(input) {
   const q = encodeURIComponent(raw);
   const yUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0`;
   const proxies = [
-    `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`,
     `https://corsproxy.io/?${encodeURIComponent(yUrl)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yUrl)}`,
-    `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(yUrl)}`
+    `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`,
+    `https://proxy.cors.sh/${yUrl}`,
   ];
   for (const p of proxies) {
     try {
@@ -1216,31 +1156,7 @@ function closeDetail(e) {
 // ── SEARCH TAB ────────────────────────────────────────────────────────────
 function setSt(m, err=false) { const b=$id('sb2'); b.className='sbar on'+(err?' err':''); $id('sm2').textContent=m; }
 function hideSt() { $id('sb2').className='sbar'; }
-function qk(t) { $id('sT').value=t; analyze(); }
 
-function renderSearch(sc, nm, t) {
-  const s = sigCfg(sc.callScore??sc.total, sc.putScore??0);
-  $id('rT').textContent = t; $id('rN').textContent = nm;
-  const rScore = $id('rScore'); rScore.innerHTML = Math.round(sc.total)+'<small>/100</small>'; rScore.style.color=s.c;
-  const rSig=$id('rSig'); rSig.textContent=s.lb; rSig.style.background=s.bg; rSig.style.color=s.c; rSig.style.border='1px solid '+s.bd;
-  $id('resBox').style.setProperty('--hc', s.c);
-  const d200 = sc.ma200?(sc.p0-sc.ma200)/sc.ma200*100:0;
-  const mRsi=$id('mRsi'); mRsi.textContent=sc.rsi.toFixed(1); mRsi.className='rm-v '+(sc.rsi<30?'bull':sc.rsi>70?'bear':'neut');
-  const mRoc=$id('mRoc'); mRoc.textContent=fmt(sc.roc1m,1)+'%'; mRoc.className='rm-v '+(sc.roc1m>=0?'bull':'bear');
-  const mMa=$id('mMa'); mMa.textContent=fmt(d200,1)+'%'; mMa.className='rm-v '+(d200>=0?'bull':'bear');
-  const mMacd=$id('mMacd'); mMacd.textContent=sc.macd>sc.signal?'↑ Bull':'↓ Bear'; mMacd.className='rm-v '+(sc.macd>sc.signal?'bull':'bear');
-  let bk=''; sc.cmp.forEach((c,i)=>{
-    if(i===sc.cmp.length-1) bk+='<div class="bkdiv"></div>';
-    bk+='<div class="bk-row"><div class="bk-l">'+c.l+'</div><div class="bk-t"><div class="bk-f" style="width:'+Math.round(c.p/c.m*100)+'%;background:'+bcol(c.p,c.m)+'"></div></div><div class="bk-p">'+c.p.toFixed(1)+'</div><div class="bk-m">/'+c.m+'</div></div>';
-  });
-  $id('bkRows').innerHTML = bk;
-  const inWL = watchlist.includes(t);
-  const btn=$id('addWlBtn'); btn.className='add-wl-btn'+(inWL?' added':'');
-  btn.textContent = inWL ? '✓ In Watchlist' : '＋ Aggiungi alla Watchlist';
-  $id('sRes').classList.add('on');
-  $id('sRes').scrollIntoView({behavior:'smooth',block:'start'});
-  lastRes = {sc, nm, t};
-}
 
 function addCurrent() {
   if (!lastRes) return;
@@ -1250,23 +1166,6 @@ function addCurrent() {
   renderTable();
 }
 
-async function analyze() {
-  const raw = $id('sT').value.trim();
-  if (!raw) { setSt('Inserisci un ticker o nome azienda', true); return; }
-  $id('sRes').classList.remove('on'); $id('btnSrch').disabled=true;
-  setSt('Ricerca '+raw+'…');
-  const t = await resolveTicker(raw);
-  if (!t) { setSt('⚠ Azienda non trovata — prova il ticker esatto', true); $id('btnSrch').disabled=false; return; }
-  $id('sT').value = t;
-  let cl,vo,nm,lp,ip;
-  try {
-    setSt('Caricamento '+t+'…');
-    const d=await fetchY(t); cl=d.closes; vo=d.volumes; nm=d.name; lp=d.livePrice; ip=d.intradayPct;
-  } catch(e) { setSt('⚠ '+e.message,true); $id('btnSrch').disabled=false; return; }
-  setSt('Calcolo Score…'); await new Promise(r=>setTimeout(r,120));
-  const sc=compute(cl,vo); sc.livePrice=lp; sc.intradayPct=ip;
-  renderSearch(sc, nm, t); hideSt(); $id('btnSrch').disabled=false;
-}
 
 // ── RESET ─────────────────────────────────────────────────────────────────
 function resetAll() {
@@ -1282,7 +1181,6 @@ function resetAll() {
 
 // ── INIT ──────────────────────────────────────────────────────────────────
 $id('addT').addEventListener('keydown',e=>{ if(e.key==='Enter') addTicker(); });
-$id('sT').addEventListener('keydown',e=>{ if(e.key==='Enter') analyze(); });
 
 renderTable();
 updateQBtns();
