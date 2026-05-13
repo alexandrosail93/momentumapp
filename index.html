@@ -21,7 +21,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .logo span{color:var(--blue)}
 .logo-sub{font-size:8px;letter-spacing:.2em;color:var(--mut);margin-top:2px;text-transform:uppercase}
 .v-chip{font-size:8px;letter-spacing:.12em;color:var(--blue);background:rgba(58,143,255,.1);border:1px solid rgba(58,143,255,.2);padding:3px 8px;border-radius:2px}
-/* TABS */
 /* ADD ROW */
 .add-row{display:flex;gap:7px;margin-bottom:10px}
 .add-row input{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:5px;color:#fff;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.08em;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none;text-transform:uppercase}
@@ -59,8 +58,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* TABLE */
 /* ── TABLE: always grid, horizontal scroll on small screens ── */
 .tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
-.tbl-inner{min-width:590px}
-:root{--tbl-cols: 72px 95px 44px 44px 54px 86px 38px 48px 62px 40px 36px}
+.tbl-inner{min-width:900px}
+:root{--tbl-cols: 80px 110px 46px 46px 58px 10px 96px 40px 52px 66px 52px 48px 48px 48px 40px}
 .tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
 .tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
@@ -117,27 +116,42 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .last-upd{font-size:8px;color:var(--mut);text-align:right;margin-top:5px}
 .last-upd b{color:var(--txt)}
 /* SEARCH TAB */
+
+.s-row{display:flex;gap:7px}
 .fw{flex:1}
 .fw input{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:5px;color:#fff;font-family:var(--mono);font-size:14px;font-weight:500;letter-spacing:.08em;padding:10px 12px;outline:none;transition:border-color .2s;-webkit-appearance:none;text-transform:uppercase}
 .fw input:focus{border-color:var(--blue)}
 .fw input::placeholder{color:var(--mut);font-size:11px;letter-spacing:0;text-transform:none;font-weight:400}
-.btn-srch{background:var(--blue);color:#fff;font-family:var(--disp);font-weight:700;font-size:10px;border:none;border-radius:5px;padding:0 16px;cursor:pointer;white-space:nowrap;min-width:86px}
-.btn-srch:active{background:var(--blue2)}
-.btn-srch:disabled{opacity:.4}
+
+
+
+.qcs{display:flex;gap:5px;flex-wrap:wrap;margin-top:9px}
+.qc{font-size:9px;color:var(--mut);background:var(--s2);border:1px solid var(--bd);border-radius:3px;padding:4px 9px;cursor:pointer;font-family:var(--mono)}
+.qc:active{color:#fff;border-color:var(--blue)}
 .snote{margin-top:9px;font-size:8px;color:var(--mut);text-align:center;line-height:1.7}
 .snote b{color:var(--call)}
-.sbar{display:none;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:10px;color:var(--mut)}
-.sbar.on{display:flex}
-.sbar.err{color:var(--put);background:rgba(255,69,96,.06);border-color:rgba(255,69,96,.2)}
-.spinner{width:13px;height:13px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
-.sbar.err .spinner{display:none}
+
+
+
+
+
+
+
 @keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
 .res-box::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--hc,var(--blue))}
-.res-main{display:grid;grid-template-columns:1fr auto;align-items:center;padding:14px 14px 10px 16px}
-.res-score{font-family:var(--disp);font-weight:900;font-size:32px;color:#fff;line-height:1;text-align:right}
+
+
+
+
 .res-score small{font-size:12px;color:var(--mut);font-weight:400}
-.res-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bd);border-top:1px solid var(--bd)}
+
+
+
+
 .bk-section{padding:14px 14px 10px;border-top:1px solid var(--bd)}
+
+
 /* DETAIL SHEET */
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;backdrop-filter:blur(6px)}
 .overlay.on{display:flex;align-items:flex-end}
@@ -196,8 +210,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 /* SETTINGS MODAL */
 .modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;backdrop-filter:blur(6px)}
 .modal-ov.on{display:flex;align-items:flex-end}
-.modal{background:var(--s1);border-top:1px solid var(--bd);border-radius:14px 14px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 20px);animation:sup .25s ease}
-.modal-title{font-family:var(--disp);font-weight:700;font-size:13px;color:#fff}
+.modal{background:var(--s1);border-top:1px solid var(--bd);border-radius:14px 14px 0 0;width:100%;padding:18px 16px calc(env(safe-area-inset-bottom,0px) + 20px);animation:sup .25s ease}
 .modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .modal-title{font-family:var(--disp);font-weight:700;font-size:14px;color:#fff}
 .modal-close{background:var(--s2);border:1px solid var(--bd);color:var(--mut);font-size:16px;width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center}
@@ -243,10 +256,8 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
       <button class="btn-gear" onclick="openSettings()" title="Impostazioni Supabase">⚙</button>
     </div>
   </header>
-
-  <!-- WATCHLIST TAB -->
-  
-    <div class="add-row">
+<!-- WATCHLIST TAB -->
+      <div class="add-row">
       <input type="text" id="addT" placeholder="Ticker o nome (es. Apple, ENI)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" maxlength="12">
       <button class="btn-add" id="btnAdd" onclick="addTicker()">+ ADD</button>
       <button class="btn-fav" onclick="addCustomBtn()" id="btnFav" title="Aggiungi ai preferiti">☆</button>
@@ -263,7 +274,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 
     <div class="top-bar">
       <span class="wl-count">Watchlist: <b id="wlC">0</b> titoli</span>
-      <div style="display:flex;gap:6px;align-items:center">
+      <div style="display:flex;gap:6px">
         <button class="btn-ref" id="btnRef" onclick="refreshAll()"><span class="si">↻</span> Aggiorna</button>
         <button class="btn-reset" onclick="resetAll()" title="Cancella tutti i dati">🗑</button>
       </div>
@@ -285,8 +296,6 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     <div class="last-upd" id="lastUpd" style="display:none">Aggiornato: <b id="updTime"></b></div>
   </div>
 
-  
-</div>
 
 <!-- DETAIL OVERLAY -->
 <div class="overlay" id="ov" onclick="closeDetail(event)">
@@ -298,16 +307,17 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div id="dScoreRow"></div>
     <div id="dContent"></div>
+  </div>
+</div>
 
 <!-- SETTINGS MODAL -->
-<div class="modal-ov" id="settingsOv" onclick="closeSettings(event)">
+<div class="modal-ov" id="settingsOv" onclick="if(event.target===this)closeSettings()">
   <div class="modal">
     <div class="modal-hdr">
-      <div class="modal-title">⚙ Impostazioni</div>
+      <div class="modal-title">⚙ Impostazioni Supabase</div>
       <button class="modal-close" onclick="closeSettings()">✕</button>
     </div>
-    <div class="set-divider"></div>
-    <div class="set-lbl">Supabase — Project URL</div>
+    <div class="set-lbl">Project URL</div>
     <input class="set-input" id="sbUrl" type="text" placeholder="https://xyzxyz.supabase.co" autocomplete="off" autocorrect="off" spellcheck="false">
     <div class="set-lbl">Anon Key</div>
     <input class="set-input" id="sbKey" type="password" placeholder="eyJhbGci…" autocomplete="off">
@@ -332,7 +342,6 @@ let scores    = {};
 let alerts    = JSON.parse(localStorage.getItem(ALERT_KEY) || '{}');
 let sortMode  = 'score';
 let collapsed = new Set();
-
 function saveWL()     { localStorage.setItem(WL_KEY,    JSON.stringify(watchlist)); syncToSupabase(); }
 function saveAlerts() { localStorage.setItem(ALERT_KEY, JSON.stringify(alerts));    }
 function $id(id)      { return document.getElementById(id); }
@@ -426,8 +435,7 @@ function openSettings() {
   document.body.style.overflow = 'hidden';
 }
 
-function closeSettings(e) {
-  if (e && e.target !== $id('settingsOv')) return;
+function closeSettings() {
   $id('settingsOv').classList.remove('on');
   document.body.style.overflow = '';
 }
@@ -552,10 +560,10 @@ async function fetchY(t) {
   const base = 'https://query1.finance.yahoo.com/v8/finance/chart/' + t + '?interval=1d&range=1y';
   const base2 = 'https://query2.finance.yahoo.com/v8/finance/chart/' + t + '?interval=1d&range=1y';
   const proxies = [
+    u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
     u => 'https://corsproxy.io/?' + encodeURIComponent(u),
     u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-    u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u),
-    u => 'https://proxy.cors.sh/' + u,
+    u => 'https://thingproxy.freeboard.io/fetch/' + encodeURIComponent(u),
   ];
   let lastErr = new Error('Tutti i proxy falliti');
   for (const yUrl of [base, base2]) {
@@ -775,7 +783,6 @@ function histChart(t) {
 
 // ── TABS ──────────────────────────────────────────────────────────────────
 
-
 // ── WATCHLIST ─────────────────────────────────────────────────────────────
 function addTicker() {
   const t = $id('addT').value.trim().toUpperCase();
@@ -797,10 +804,8 @@ async function resolveTicker(input) {
   const q = encodeURIComponent(raw);
   const yUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${q}&quotesCount=5&newsCount=0`;
   const proxies = [
-    `https://corsproxy.io/?${encodeURIComponent(yUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(yUrl)}`,
     `https://api.allorigins.win/get?url=${encodeURIComponent(yUrl)}`,
-    `https://proxy.cors.sh/${yUrl}`,
+    `https://corsproxy.io/?${encodeURIComponent(yUrl)}`
   ];
   for (const p of proxies) {
     try {
@@ -892,7 +897,7 @@ function updateQBtns() {
 
 function setSort(m) {
   sortMode = m;
-  ['score','call','put','ticker','rsi','roc',].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
+  ['score','call','put','ticker','rsi','roc'].forEach(k => $id('sb-'+k)?.classList.toggle('active',k===m));
   renderTable();
 }
 
@@ -958,16 +963,17 @@ function buildRows(list) {
         + '<div class="td sc" style="color:#00E5A0;justify-content:center">'+Math.round(sc.callScore??sc.total)+'</div>'
         + '<div class="td sc" style="color:#FF4560;justify-content:center">'+Math.round(sc.putScore??0)+'</div>'
         + '<div class="td spark">'+sparkline(sc.c30)+'</div>'
+        + '<div class="td ctr">'+trH+'</div>'
         + '<div class="td sig"><span class="sig-tag" style="background:'+s.bg+';color:'+s.c+';border:1px solid '+s.bd+'">'+s.lb+'</span></div>'
         + '<div class="td nr '+rsiCls+'">'+sc.rsi.toFixed(0)+'</div>'
         + '<div class="td nr '+r1Cls+'">'+fmt(sc.roc1m,1)+'%</div>'
         + '<div class="td live">'+lpH+'</div>'
+        + deskCells
         + '<div class="td ctr '+mCls+'" style="font-size:13px">'+(sc.macd>sc.signal?'↑':'↓')+'</div>'
         + '<div class="td act"><div class="act-wrap">'
         + '<button class="ref-btn" onclick="refreshOne(\''+t+'\');event.stopPropagation()">↻</button>'
         + '<button class="del-btn" onclick="removeTicker(\''+t+'\');event.stopPropagation()">✕</button>'
-        + '</div></div>'
-        + '</div>';
+        + '</div></div></div>';
     }
   });
   return h;
@@ -980,23 +986,18 @@ function buildTHEAD() {
     + '<div class="th" style="justify-content:center;color:#00E5A0">CALL</div>'
     + '<div class="th" style="justify-content:center;color:#FF4560">PUT</div>'
     + '<div class="th" style="justify-content:center">Spark</div>'
+    + '<div class="th"></div>'
     + '<div class="th">Segnale</div>'
     + '<div class="th" style="justify-content:flex-end;padding-right:7px">RSI</div>'
     + '<div class="th" style="justify-content:flex-end;padding-right:7px">ROC 1M</div>'
     + '<div class="th" style="justify-content:flex-end;padding-right:7px">Prezzo</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">MA200%</div>'
+    + '<div class="th" style="justify-content:flex-end;padding-right:7px">BB %B</div>'
+    + '<div class="th" style="justify-content:center">Vol</div>'
     + '<div class="th" style="justify-content:center">MACD</div>'
     + '<div class="th"></div>'
     + '</div>';
 }
-
-
-// ── FUNDAMENTALS ──────────────────────────────────────────────────────────
-
-
-
-// Fund score color helper
-
-
 
 function renderTable() {
   const list = sortedWL();
@@ -1005,7 +1006,7 @@ function renderTable() {
   const el = $id('wlTable');
 
   if (!watchlist.length) {
-    el.innerHTML = '<div class="empty"><b>Watchlist vuota</b>Usa i bottoni in alto o il tab Analisi</div>';
+    el.innerHTML = '<div class="empty"><b>Watchlist vuota</b>Aggiungi ticker con il campo in alto oppure usa i bottoni preferiti</div>';
     return;
   }
 
@@ -1154,17 +1155,8 @@ function closeDetail(e) {
 }
 
 // ── SEARCH TAB ────────────────────────────────────────────────────────────
-function setSt(m, err=false) { const b=$id('sb2'); b.className='sbar on'+(err?' err':''); $id('sm2').textContent=m; }
-function hideSt() { $id('sb2').className='sbar'; }
 
 
-function addCurrent() {
-  if (!lastRes) return;
-  const t=lastRes.t;
-  if (!watchlist.includes(t)) { watchlist.push(t); saveWL(); scores[t]={...lastRes.sc,name:lastRes.nm}; saveCache(); }
-  const btn=$id('addWlBtn'); btn.className='add-wl-btn added'; btn.textContent='✓ In Watchlist';
-  renderTable();
-}
 
 
 // ── RESET ─────────────────────────────────────────────────────────────────
