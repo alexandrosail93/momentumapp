@@ -57,9 +57,9 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 .sb.active{color:var(--blue);border-color:var(--blue);background:rgba(58,143,255,.08)}
 /* TABLE */
 /* ── TABLE: always grid, horizontal scroll on small screens ── */
-.tbl-outer{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
-.tbl-inner{min-width:900px}
-:root{--tbl-cols: 80px 110px 46px 46px 58px 10px 96px 40px 52px 66px 52px 48px 48px 48px 40px}
+.tbl-outer{overflow-x:hidden;-webkit-overflow-scrolling:touch;border:1px solid var(--bd);border-radius:8px}
+.tbl-inner{min-width:0}
+:root{--tbl-cols: 80px 1fr 46px 46px 58px 10px 96px 40px 52px 66px 52px 48px 48px 48px 40px}
 .tbl-head{display:grid;grid-template-columns:var(--tbl-cols);background:var(--s2);border-bottom:1px solid var(--bd2)}
 .tbl-row{display:grid;grid-template-columns:var(--tbl-cols);border-bottom:1px solid var(--bd);cursor:pointer;position:relative;transition:background .1s}
 .tbl-row:last-child{border-bottom:none}
