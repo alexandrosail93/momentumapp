@@ -549,28 +549,6 @@ function cacheAge() {
   } catch(e) { return null; }
 }
 
-// ── SCORE HISTORY ────────────────────────────────────────────────────────
-function saveHist(t, score) {
-  try {
-    const h = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
-    if (!h[t]) h[t] = [];
-    h[t].push({ s: Math.round(score), ts: Date.now() });
-    if (h[t].length > 30) h[t] = h[t].slice(-30);
-    localStorage.setItem(HIST_KEY, JSON.stringify(h));
-  } catch(e) {}
-}
-function getHist(t) {
-  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '{}')[t] || []; }
-  catch(e) { return []; }
-}
-function trendOf(t) {
-  const h = getHist(t);
-  if (h.length < 2) return null;
-  const d = h[h.length-1].s - h[h.length-2].s;
-  if (Math.abs(d) < 1) return { a: '→', c: 'neut' };
-  return d > 0 ? { a: '↑', c: 'bull', d } : { a: '↓', c: 'bear', d };
-}
-
 // ── ALERTS ───────────────────────────────────────────────────────────────
 function checkAlert(t, score) {
   const a = alerts[t];
@@ -799,7 +777,7 @@ function sparkline(closes) {
 
 // ── HISTORY CHART ────────────────────────────────────────────────────────
 function histChart(t) {
-  const h = getHist(t);
+  const h = getHistory(t);
   if (h.length < 2) return '';
   const W=280, H=50, pad=4;
   const mn=Math.min(...h.map(x=>x.s)), mx=Math.max(...h.map(x=>x.s)), rng=mx-mn||1;
@@ -808,7 +786,7 @@ function histChart(t) {
     const cy = pad + (1-(x.s-mn)/rng)*(H-pad*2);
     return cx.toFixed(1)+','+cy.toFixed(1);
   }).join(' ');
-  const col = h[h.length-1].s >= h[0].s ? 'var(--call)' : 'var(--put)';
+  const col = (h[h.length-1].c??h[h.length-1].s??0) >= (h[0].c??h[0].s??0) ? 'var(--call)' : 'var(--put)';
   const dots = h.map((x,i) => {
     const cx = pad + i/(h.length-1)*(W-pad*2);
     const cy = pad + (1-(x.s-mn)/rng)*(H-pad*2);
@@ -822,7 +800,7 @@ function histChart(t) {
     + '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:50px">'
     + '<polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
     + dots + '</svg>'
-    + '<div class="hist-lbl"><span>'+d1+' · '+h[0].s+'</span><span>'+d2+' · '+h[h.length-1].s+'</span></div>'
+    + '<div class="hist-lbl"><span>'+d1+' · '+(h[0].c??h[0].s??'?')+'</span><span>'+d2+' · '+(h[h.length-1].c??h[h.length-1].s??'?')+'</span></div>'
     + '</div>';
 }
 
@@ -987,7 +965,7 @@ function buildRows(list) {
       const rsiCls = sc.rsi<30?'bull':sc.rsi>70?'bear':'neut';
       const r1Cls  = sc.roc1m>=0?'bull':'bear';
       const mCls   = sc.macd>sc.signal?'bull':'bear';
-      const tr     = trendOf(t);
+      const histT  = getHistory(t); const tr = histT.length>=2 ? (histT[histT.length-1].c>histT[histT.length-2].c ? {a:'↑',c:'bull'} : histT[histT.length-1].c<histT[histT.length-2].c ? {a:'↓',c:'bear'} : {a:'→',c:'neut'}) : null;
       const trH    = tr ? '<span class="'+tr.c+'" style="font-size:12px;font-weight:700">'+tr.a+'</span>' : '';
       const al     = alerts[t];
       const abH    = al ? '<div class="abadge'+(sc._af?' fired':'')+'"></div>' : '';
@@ -1152,11 +1130,12 @@ function renderHistorico() {
 
 function addHistPoint(t) {
   const sc = scores[t];
-  if (!sc || sc.error) return;
-  // Flash feedback
-  const btn = document.querySelector(`[onclick="addHistPoint('${t}');event.stopPropagation()"]`);
-  if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = '📊', 1000); }
-  if (document.getElementById('tabHist').style.display !== 'none') renderHistorico();
+  if (!sc || sc.error) { alert('Nessun dato per ' + t + '. Aggiorna prima il ticker.'); return; }
+  saveHistory(t, sc.callScore ?? sc.total, sc.putScore ?? 0);
+  // Flash feedback on button
+  const btn = document.querySelector('[onclick="addHistPoint(\'' + t + '\');event.stopPropagation()"]');
+  if (btn) { const orig = btn.textContent; btn.textContent = '✓'; setTimeout(() => btn.textContent = orig, 1000); }
+  if ($id('tabHist') && $id('tabHist').style.display !== 'none') renderHistorico();
 }
 
 function clearAllHistory() {
@@ -1191,7 +1170,6 @@ async function fetchOne(t) {
     const sc = compute(d.closes, d.volumes);
     sc.name=d.name; sc.livePrice=d.livePrice; sc.intradayPct=d.intradayPct; sc.updAt=Date.now();
     scores[t] = sc;
-    saveHist(t, sc.total);
     checkAlert(t, sc.total);
   } catch(e) { scores[t] = { error: e.message }; }
   renderTable();
@@ -1341,6 +1319,15 @@ function resetAll() {
 // ── INIT ──────────────────────────────────────────────────────────────────
 $id('addT').addEventListener('keydown',e=>{ if(e.key==='Enter') addTicker(); });
 
+// Migrate old history format {s:} → skip (clear incompatible data)
+try {
+  const raw = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+  let dirty = false;
+  for (const [k, arr] of Object.entries(raw)) {
+    if (arr.length && arr[0].s !== undefined) { delete raw[k]; dirty = true; }
+  }
+  if (dirty) localStorage.setItem(HIST_KEY, JSON.stringify(raw));
+} catch(e) {}
 renderTable();
 updateQBtns();
 renderCustomBtns();
