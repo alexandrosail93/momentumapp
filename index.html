@@ -245,6 +245,32 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 }
 .sig-tag-full { display: none; }
 .sig-tag-short { display: inline; }
+
+/* ── STORICO ── */
+.hist-top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.hist-list{display:flex;flex-direction:column;gap:12px}
+.hist-card{background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden;position:relative}
+.hist-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--hc,var(--bd))}
+.hist-card-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px 16px}
+.hist-card-tkr{font-family:var(--disp);font-weight:900;font-size:15px;color:#fff}
+.hist-card-name{font-size:9px;color:var(--mut);margin-top:2px}
+.hist-card-right{text-align:right;font-size:9px;color:var(--mut)}
+.hist-card-right b{color:var(--txt);font-size:11px}
+.hist-scores{display:flex;gap:0;overflow-x:auto;padding:0 14px 8px 16px;scrollbar-width:none}
+.hist-scores::-webkit-scrollbar{display:none}
+.hist-score-pt{flex-shrink:0;text-align:center;padding:4px 8px;border-right:1px solid var(--bd);min-width:52px}
+.hist-score-pt:last-child{border-right:none}
+.hist-score-date{font-size:7px;color:var(--mut);letter-spacing:.03em;white-space:nowrap;margin-bottom:3px}
+.hist-score-vals{display:flex;gap:4px;justify-content:center;align-items:baseline}
+.hist-score-call{font-family:var(--disp);font-weight:700;font-size:13px;color:#00E5A0}
+.hist-score-put{font-family:var(--disp);font-weight:700;font-size:13px;color:#FF4560}
+.hist-chart-wrap{padding:0 14px 12px 16px}
+.hist-svg{width:100%;height:60px;display:block;overflow:visible}
+.btn-hist{background:transparent;border:none;color:var(--mut);font-size:12px;cursor:pointer;padding:5px 4px;transition:color .15s;line-height:1}
+.btn-hist:hover{color:#f0b429}
+
+.tab{flex:1;background:transparent;border:none;color:var(--mut);font-family:var(--mono);font-size:9px;letter-spacing:.1em;padding:8px;cursor:pointer;border-radius:4px;transition:all .2s;text-transform:uppercase}
+.tab.active{background:var(--blue);color:#fff;font-weight:500}
 </style>
 </head>
 <body>
@@ -257,7 +283,15 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
   </header>
 <!-- WATCHLIST TAB -->
-      <div class="add-row">
+      <!-- TABS -->
+    <div style="display:flex;background:var(--s1);border:1px solid var(--bd);border-radius:7px;padding:3px;gap:3px;margin-bottom:14px">
+      <button id="tab-wl"   class="tab active" onclick="switchTab('wl')">📋 Watchlist</button>
+      <button id="tab-hist" class="tab"         onclick="switchTab('hist')">📊 Storico</button>
+    </div>
+
+    <!-- WATCHLIST CONTENT -->
+    <div id="tabWL">
+    <div class="add-row">
       <input type="text" id="addT" placeholder="Ticker o nome (es. Apple, ENI)" autocomplete="off" autocorrect="off" spellcheck="false" autocapitalize="characters" maxlength="12">
       <button class="btn-add" id="btnAdd" onclick="addTicker()">+ ADD</button>
       <button class="btn-fav" onclick="addCustomBtn()" id="btnFav" title="Aggiungi ai preferiti">☆</button>
@@ -294,8 +328,18 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
     </div>
     <div id="wlTable"></div>
     <div class="last-upd" id="lastUpd" style="display:none">Aggiornato: <b id="updTime"></b></div>
+  </div><!-- /tabWL -->
+
+  <!-- STORICO TAB -->
+  <div id="tabHist" style="display:none">
+    <div class="hist-top-bar">
+      <span class="wl-count" id="histCount">0 ticker con storico</span>
+      <button class="btn-ref" onclick="clearAllHistory()" style="color:var(--put);border-color:rgba(255,69,96,.3);font-size:8px">🗑 Cancella storico</button>
+    </div>
+    <div id="histList" class="hist-list"></div>
   </div>
 
+</div><!-- /app -->
 
 <!-- DETAIL OVERLAY -->
 <div class="overlay" id="ov" onclick="closeDetail(event)">
@@ -333,6 +377,7 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
 // ── STORAGE KEYS ─────────────────────────────────────────────────────────
 const WL_KEY    = 'miq_wl_v5';
 const CACHE_KEY = 'miq_cache_v5';
+const MAX_HIST = 20;
 const HIST_KEY  = 'miq_hist_v5';
 const ALERT_KEY = 'miq_alerts_v5';
 const CACHE_TTL = 4 * 60 * 60 * 1000;
@@ -997,6 +1042,127 @@ function buildTHEAD() {
     + '<div class="th" style="justify-content:center">MACD</div>'
     + '<div class="th"></div>'
     + '</div>';
+}
+
+function saveHistory(t, callScore, putScore) {
+  try {
+    const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+    if (!hist[t]) hist[t] = [];
+    hist[t].push({ c: Math.round(callScore), p: Math.round(putScore), ts: Date.now() });
+    if (hist[t].length > MAX_HIST) hist[t] = hist[t].slice(-MAX_HIST);
+    localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+    if (sbReady()) sbSet('history', hist);
+  } catch(e) {}
+}
+
+function getHistory(t) {
+  try {
+    const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+    return hist[t] || [];
+  } catch(e) { return []; }
+}
+
+function switchTab(tab) {
+  ['wl','hist'].forEach(k => { const btn=$id('tab-'+k); if(btn) btn.classList.toggle('active',k===tab); });
+  if($id('tabWL')) $id('tabWL').style.display=tab==='wl'?'block':'none';
+  if($id('tabHist')) $id('tabHist').style.display=tab==='hist'?'block':'none';
+  if(tab==='hist') renderHistorico();
+}
+
+function renderHistorico() {
+  const histData = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+  const tickers  = Object.keys(histData).filter(t => histData[t].length > 0);
+  const count    = $id('histCount');
+  if (count) count.textContent = tickers.length + ' ticker con storico';
+  const list = $id('histList');
+  if (!list) return;
+  if (!tickers.length) {
+    list.innerHTML = '<div class="empty"><b>Nessuno storico</b>Premi 📊 su un ticker per aggiungere una rilevazione</div>';
+    return;
+  }
+  list.innerHTML = tickers.map(t => {
+    const pts   = histData[t];
+    const sc    = scores[t];
+    const name  = sc?.name || t;
+    const last  = pts[pts.length-1];
+    const sig   = sigCfg(last.c, last.p);
+    const fmt   = ts => {
+      const d = new Date(ts);
+      return d.getDate().toString().padStart(2,'0') + '/'
+           + (d.getMonth()+1).toString().padStart(2,'0') + ' '
+           + d.getHours().toString().padStart(2,'0') + ':'
+           + d.getMinutes().toString().padStart(2,'0');
+    };
+    // Score points row
+    const ptsHtml = pts.map(p =>
+      `<div class="hist-score-pt">
+        <div class="hist-score-date">${fmt(p.ts)}</div>
+        <div class="hist-score-vals">
+          <span class="hist-score-call">${p.c}</span>
+          <span style="font-size:9px;color:var(--mut)">/</span>
+          <span class="hist-score-put">${p.p}</span>
+        </div>
+      </div>`
+    ).join('');
+    // Mini chart SVG
+    const W=280, H=50, pad=4;
+    const nPts = pts.length;
+    const allVals = pts.flatMap(p=>[p.c,p.p]);
+    const mn=Math.max(0,Math.min(...allVals)-5), mx=Math.min(100,Math.max(...allVals)+5);
+    const rng=mx-mn||1;
+    const cx = i => pad+(i/(nPts-1||1))*(W-pad*2);
+    const cy = v => pad+(1-(v-mn)/rng)*(H-pad*2);
+    const polyC = nPts>1 ? pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.c).toFixed(1)}`).join(' ') : '';
+    const polyP = nPts>1 ? pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.p).toFixed(1)}`).join(' ') : '';
+    const chartSvg = nPts > 1 ? `
+      <div class="hist-chart-wrap">
+        <svg class="hist-svg" viewBox="0 0 ${W} ${H}">
+          <line x1="${pad}" y1="${cy(50).toFixed(1)}" x2="${W-pad}" y2="${cy(50).toFixed(1)}" stroke="var(--bd)" stroke-width="1" stroke-dasharray="3,3"/>
+          <polyline points="${polyC}" fill="none" stroke="#00E5A0" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+          <polyline points="${polyP}" fill="none" stroke="#FF4560" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+          ${pts.map((p,i)=>`
+            <circle cx="${cx(i).toFixed(1)}" cy="${cy(p.c).toFixed(1)}" r="2.5" fill="#00E5A0" opacity="${i===nPts-1?1:.5}"/>
+            <circle cx="${cx(i).toFixed(1)}" cy="${cy(p.p).toFixed(1)}" r="2.5" fill="#FF4560" opacity="${i===nPts-1?1:.5}"/>
+          `).join('')}
+        </svg>
+        <div style="display:flex;gap:12px;font-size:8px;color:var(--mut);margin-top:2px">
+          <span style="color:#00E5A0">● CALL</span>
+          <span style="color:#FF4560">● PUT</span>
+          <span>${nPts} rilevazioni · max ${MAX_HIST}</span>
+        </div>
+      </div>` : '';
+    return `<div class="hist-card" style="--hc:${sig.c}">
+      <div class="hist-card-hdr">
+        <div>
+          <div class="hist-card-tkr">${t}</div>
+          <div class="hist-card-name">${name}</div>
+        </div>
+        <div class="hist-card-right">
+          Ultima: <b>${last.c}</b> / <b style="color:#FF4560">${last.p}</b>
+          <div style="margin-top:2px"><span class="sig-tag" style="background:${sig.bg};color:${sig.c};border:1px solid ${sig.bd}">${sig.lb}</span></div>
+        </div>
+      </div>
+      <div class="hist-scores">${ptsHtml}</div>
+      ${chartSvg}
+    </div>`;
+  }).join('');
+}
+
+function addHistPoint(t) {
+  const sc = scores[t];
+  if (!sc || sc.error) return;
+  saveHistory(t, sc.callScore??sc.total, sc.putScore??0);
+  // Flash feedback
+  const btn = document.querySelector(`[onclick="addHistPoint('${t}');event.stopPropagation()"]`);
+  if (btn) { btn.textContent = '✓'; setTimeout(() => btn.textContent = '📊', 1000); }
+  if (document.getElementById('tabHist').style.display !== 'none') renderHistorico();
+}
+
+function clearAllHistory() {
+  if (!confirm('Cancellare tutto lo storico punteggi?')) return;
+  localStorage.removeItem(HIST_KEY);
+  if (sbReady()) sbSet('history', {});
+  renderHistorico();
 }
 
 function renderTable() {
