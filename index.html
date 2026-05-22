@@ -334,7 +334,10 @@ body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(
   <div id="tabHist" style="display:none">
     <div class="hist-top-bar">
       <span class="wl-count" id="histCount">0 ticker con storico</span>
-      <button class="btn-ref" onclick="clearAllHistory()" style="color:var(--put);border-color:rgba(255,69,96,.3);font-size:8px">🗑 Cancella storico</button>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-ref" id="btnHistSort" onclick="toggleHistSort()" style="font-size:8px">A–Z ↕</button>
+        <button class="btn-ref" onclick="clearAllHistory()" style="color:var(--put);border-color:rgba(255,69,96,.3);font-size:8px">🗑 Cancella storico</button>
+      </div>
     </div>
     <div id="histList" class="hist-list"></div>
   </div>
@@ -1051,9 +1054,12 @@ function switchTab(tab) {
 
 function renderHistorico() {
   const histData = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
-  const tickers  = Object.keys(histData).filter(t => histData[t].length > 0);
-  const count    = $id('histCount');
+  let tickers = Object.keys(histData).filter(t => histData[t].length > 0);
+  if (window._histSortAZ) tickers = tickers.slice().sort((a,b) => a.localeCompare(b));
+  const count = $id('histCount');
   if (count) count.textContent = tickers.length + ' ticker con storico';
+  const sortBtn = $id('btnHistSort');
+  if (sortBtn) sortBtn.style.color = window._histSortAZ ? 'var(--blue)' : '';
   const list = $id('histList');
   if (!list) return;
   if (!tickers.length) {
@@ -1061,65 +1067,38 @@ function renderHistorico() {
     return;
   }
   list.innerHTML = tickers.map(t => {
-    const pts   = histData[t];
-    const sc    = scores[t];
-    const name  = sc?.name || t;
-    const last  = pts[pts.length-1];
-    const sig   = sigCfg(last.c, last.p);
-    const fmt   = ts => {
+    const pts  = histData[t];
+    const sc   = scores[t];
+    const name = sc?.name || t;
+    const last = pts[pts.length-1];
+    const sig  = sigCfg(last.c, last.p);
+    const fmtTs = ts => {
       const d = new Date(ts);
-      return d.getDate().toString().padStart(2,'0') + '/'
-           + (d.getMonth()+1).toString().padStart(2,'0') + ' '
-           + d.getHours().toString().padStart(2,'0') + ':'
-           + d.getMinutes().toString().padStart(2,'0');
+      return d.getDate().toString().padStart(2,'0')+'/'+(d.getMonth()+1).toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
     };
-    // Score points row
     const ptsHtml = pts.map(p =>
-      `<div class="hist-score-pt">
-        <div class="hist-score-date">${fmt(p.ts)}</div>
-        <div class="hist-score-vals">
-          <span class="hist-score-call">${p.c}</span>
-          <span style="font-size:9px;color:var(--mut)">/</span>
-          <span class="hist-score-put">${p.p}</span>
-        </div>
-      </div>`
+      `<div class="hist-score-pt"><div class="hist-score-date">${fmtTs(p.ts)}</div><div class="hist-score-vals"><span class="hist-score-call">${p.c}</span><span style="font-size:9px;color:var(--mut)">/</span><span class="hist-score-put">${p.p}</span></div></div>`
     ).join('');
-    // Mini chart SVG
-    const W=280, H=50, pad=4;
-    const nPts = pts.length;
-    const allVals = pts.flatMap(p=>[p.c,p.p]);
-    const mn=Math.max(0,Math.min(...allVals)-5), mx=Math.min(100,Math.max(...allVals)+5);
-    const rng=mx-mn||1;
-    const cx = i => pad+(i/(nPts-1||1))*(W-pad*2);
-    const cy = v => pad+(1-(v-mn)/rng)*(H-pad*2);
-    const polyC = nPts>1 ? pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.c).toFixed(1)}`).join(' ') : '';
-    const polyP = nPts>1 ? pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.p).toFixed(1)}`).join(' ') : '';
-    const chartSvg = nPts > 1 ? `
-      <div class="hist-chart-wrap">
-        <svg class="hist-svg" viewBox="0 0 ${W} ${H}">
-          <line x1="${pad}" y1="${cy(50).toFixed(1)}" x2="${W-pad}" y2="${cy(50).toFixed(1)}" stroke="var(--bd)" stroke-width="1" stroke-dasharray="3,3"/>
-          <polyline points="${polyC}" fill="none" stroke="#00E5A0" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
-          <polyline points="${polyP}" fill="none" stroke="#FF4560" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
-          ${pts.map((p,i)=>`
-            <circle cx="${cx(i).toFixed(1)}" cy="${cy(p.c).toFixed(1)}" r="2.5" fill="#00E5A0" opacity="${i===nPts-1?1:.5}"/>
-            <circle cx="${cx(i).toFixed(1)}" cy="${cy(p.p).toFixed(1)}" r="2.5" fill="#FF4560" opacity="${i===nPts-1?1:.5}"/>
-          `).join('')}
-        </svg>
-        <div style="display:flex;gap:12px;font-size:8px;color:var(--mut);margin-top:2px">
-          <span style="color:#00E5A0">● CALL</span>
-          <span style="color:#FF4560">● PUT</span>
-          <span>${nPts} rilevazioni · max ${MAX_HIST}</span>
-        </div>
-      </div>` : '';
+    const W=280,H=50,pad=4,nPts=pts.length;
+    const allV=pts.flatMap(p=>[p.c,p.p]);
+    const mn=Math.max(0,Math.min(...allV)-5),mx=Math.min(100,Math.max(...allV)+5),rng=mx-mn||1;
+    const cx=i=>pad+(i/(nPts-1||1))*(W-pad*2);
+    const cy=v=>pad+(1-(v-mn)/rng)*(H-pad*2);
+    const polyC=nPts>1?pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.c).toFixed(1)}`).join(' '):'';
+    const polyP=nPts>1?pts.map((p,i)=>`${cx(i).toFixed(1)},${cy(p.p).toFixed(1)}`).join(' '):'';
+    const chartSvg = nPts>1 ? `<div class="hist-chart-wrap"><svg class="hist-svg" viewBox="0 0 ${W} ${H}">
+      <line x1="${pad}" y1="${cy(50).toFixed(1)}" x2="${W-pad}" y2="${cy(50).toFixed(1)}" stroke="var(--bd)" stroke-width="1" stroke-dasharray="3,3"/>
+      <polyline points="${polyC}" fill="none" stroke="#00E5A0" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+      <polyline points="${polyP}" fill="none" stroke="#FF4560" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" opacity=".9"/>
+      ${pts.map((p,i)=>`<circle cx="${cx(i).toFixed(1)}" cy="${cy(p.c).toFixed(1)}" r="2.5" fill="#00E5A0" opacity="${i===nPts-1?1:.5}"/><circle cx="${cx(i).toFixed(1)}" cy="${cy(p.p).toFixed(1)}" r="2.5" fill="#FF4560" opacity="${i===nPts-1?1:.5}"/>`).join('')}
+    </svg><div style="display:flex;gap:12px;font-size:8px;color:var(--mut);margin-top:2px"><span style="color:#00E5A0">● CALL</span><span style="color:#FF4560">● PUT</span><span>${nPts} rilevazioni · max ${MAX_HIST}</span></div></div>` : '';
     return `<div class="hist-card" style="--hc:${sig.c}">
       <div class="hist-card-hdr">
-        <div>
-          <div class="hist-card-tkr">${t}</div>
-          <div class="hist-card-name">${name}</div>
-        </div>
-        <div class="hist-card-right">
-          Ultima: <b>${last.c}</b> / <b style="color:#FF4560">${last.p}</b>
-          <div style="margin-top:2px"><span class="sig-tag" style="background:${sig.bg};color:${sig.c};border:1px solid ${sig.bd}">${sig.lb}</span></div>
+        <div><div class="hist-card-tkr">${t}</div><div class="hist-card-name">${name}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
+          <button onclick="deleteHistTicker('${t}')" style="background:transparent;border:1px solid rgba(255,69,96,.3);color:var(--put);font-size:9px;border-radius:4px;padding:3px 8px;cursor:pointer;line-height:1">✕ Rimuovi</button>
+          <div class="hist-card-right">Ultima: <b>${last.c}</b>/<b style="color:#FF4560">${last.p}</b></div>
+          <span class="sig-tag" style="background:${sig.bg};color:${sig.c};border:1px solid ${sig.bd}">${sig.lb}</span>
         </div>
       </div>
       <div class="hist-scores">${ptsHtml}</div>
@@ -1127,6 +1106,22 @@ function renderHistorico() {
     </div>`;
   }).join('');
 }
+
+function toggleHistSort() {
+  window._histSortAZ = !window._histSortAZ;
+  renderHistorico();
+}
+
+function deleteHistTicker(t) {
+  try {
+    const hist = JSON.parse(localStorage.getItem(HIST_KEY) || '{}');
+    delete hist[t];
+    localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+    if (sbReady()) sbSet('history', hist);
+  } catch(e) {}
+  renderHistorico();
+}
+
 
 function addHistPoint(t) {
   const sc = scores[t];
